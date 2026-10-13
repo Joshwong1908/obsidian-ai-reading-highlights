@@ -79,6 +79,9 @@ export default class SemanticReadingPlugin extends Plugin {
     this.app.workspace.onLayoutReady(() => {
       const file = this.activeNoteFile();
       if (file !== null) this.pipeline.fileOpened(file.path);
+      setTimeout(() => {
+        void this.diagnose(true);
+      }, 6000);
     });
     this.addCommand({
       id: "reclassify-note",
@@ -123,7 +126,7 @@ export default class SemanticReadingPlugin extends Plugin {
     }
   }
 
-  private async diagnose(): Promise<void> {
+  private async diagnose(auto = false): Promise<void> {
     const s = renderStats();
     const ua = navigator.userAgent;
     const obsidianVersion = /obsidian\/([\d.]+)/i.exec(ua)?.[1] ?? "unknown";
@@ -152,9 +155,13 @@ export default class SemanticReadingPlugin extends Plugin {
       const dir = this.manifest.dir ?? "";
       const path = dir === "" ? "diagnosis.txt" : `${dir.replace(/\/+$/, "")}/diagnosis.txt`;
       await this.app.vault.adapter.write(path, report + "\n");
-      new Notice(`SR diagnosis: liveBuilt=${s.liveMarksBuilt} liveHits=${s.liveStoreHits} cmMarks=${document.querySelectorAll(".cm-content .sr-kp, .cm-content .sr-term, .cm-content .sr-concept").length} readingMarks=${s.marksApplied} store=${this.store.size()}. Full: ${path}`, 12000);
+      if (!auto) {
+        new Notice(`SR diagnosis: liveBuilt=${s.liveMarksBuilt} liveHits=${s.liveStoreHits} cmMarks=${document.querySelectorAll(".cm-content .sr-kp, .cm-content .sr-term, .cm-content .sr-concept").length} readingMarks=${s.marksApplied} store=${this.store.size()}. Full: ${path}`, 12000);
+      }
     } catch (e) {
-      new Notice(`SR diagnosis (write failed): liveBuilt=${s.liveMarksBuilt} liveHits=${s.liveStoreHits} readingMarks=${s.marksApplied} store=${this.store.size()}.`, 12000);
+      if (!auto) {
+        new Notice(`SR diagnosis (write failed): liveBuilt=${s.liveMarksBuilt} liveHits=${s.liveStoreHits} readingMarks=${s.marksApplied} store=${this.store.size()}.`, 12000);
+      }
     }
   }
 
