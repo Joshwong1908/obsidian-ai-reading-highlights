@@ -1,4 +1,5 @@
 import type { MarkdownPostProcessor, MarkdownPostProcessorContext } from "obsidian";
+import { stats } from "./stats";
 import { BlockHash, isClassifiable, splitBlocks } from "./blocks";
 import { sigMap, dedupe, Loc, SPAN_CLASS, SPAN_LABEL, Span, SpanRole } from "./spans";
 import { AnnotationStore } from "./store";
@@ -152,14 +153,25 @@ export function createReadingViewDecorator(deps: ReadingViewDeps): MarkdownPostP
   });
 
   return (el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
+    stats.postProcessorCalls++;
     const info = ctx.getSectionInfo(el);
+    if (info === null) stats.sectionInfoNull++;
     const blocks = info === null ? [] : splitBlocks(info.text)
       .blocks.filter((b) => isClassifiable(b.kind))
       .map((b) => ({ hash: b.hash, text: b.text }));
+    stats.blocksSeen += blocks.length;
     const enabled = deps.enabledSpans();
     const blockSpans = collectBlockSpans(blocks, deps.store, enabled);
-    const spans = blockSpans.length > 0 ? blockSpans : deps.spansFor(ctx.sourcePath).filter((s) => enabled.has(s.role));
+    stats.recordHits += blockSpans.length;
+    let spans = blockSpans;
+    if (spans.length === 0) {
+      spans = deps.spansFor(ctx.sourcePath).filter((s) => enabled.has(s.role));
+      if (spans.length > 0) stats.fallbackSpansUsed += spans.length;
+    }
+    const before = el.querySelectorAll("mark.sr").length;
     applySpans(el, spans, enabled);
+    stats.marksApplied += el.querySelectorAll("mark.sr").length - before;
+    stats.spansLocated += spans.length;
     registry.push({ el, sourcePath: ctx.sourcePath, blocks });
   };
 }

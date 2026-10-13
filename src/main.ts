@@ -9,6 +9,7 @@ import { obsidianTransport } from "./transport";
 import { HttpTransport } from "./api";
 import { watchThemeAdaptation } from "./theme";
 import { Span, SpanRole } from "./spans";
+import { renderStats } from "./stats";
 
 const CACHE_FILE = "cache.json";
 const CACHE_CAPACITY = 5000;
@@ -88,6 +89,14 @@ export default class SemanticReadingPlugin extends Plugin {
       },
     });
 
+    this.addCommand({
+      id: "diagnose",
+      name: "Diagnose rendering (writes diagnosis.txt)",
+      callback: () => {
+        void this.diagnose();
+      },
+    });
+
     this.addSettingTab(new SemanticReadingSettingTab(this.app, this));
     applyHighlightStyle(this.cfg);
     this.register(() => this.offThemeWatch());
@@ -111,6 +120,41 @@ export default class SemanticReadingPlugin extends Plugin {
       const oldest = this.noteSpans.keys().next();
       if (oldest.done) break;
       this.noteSpans.delete(oldest.value);
+    }
+  }
+
+  private async diagnose(): Promise<void> {
+    const s = renderStats();
+    const ua = navigator.userAgent;
+    const obsidianVersion = /obsidian\/([\d.]+)/i.exec(ua)?.[1] ?? "unknown";
+    const feature = {
+      colorMix: CSS.supports("color", "color-mix(in srgb, red 50%, transparent)"),
+      treeWalker: typeof document.createTreeWalker === "function",
+      splitText: typeof Text.prototype.splitText === "function",
+      dataset: "dataset" in document.createElement("mark"),
+    };
+    const styleTag = document.querySelector("style") ?? document.body;
+    const lines = [
+      `obsidian: ${obsidianVersion}`,
+      `ua: ${ua}`,
+      `features: ${JSON.stringify(feature)}`,
+      `settings: enabled=${this.cfg.enabled} highlights=[${[...this.cfg.highlights].join(",")}] style=${this.cfg.style} api=${this.cfg.baseUrl !== "" && this.cfg.apiKey !== "" && this.cfg.model !== "" ? "configured" : "missing"}`,
+      `store: ${this.store.size()} records`,
+      `noteSpans cached paths: ${[...this.noteSpans.keys()].join(", ") || "none"}`,
+      `render stats: ${JSON.stringify(s)}`,
+      `body datasets: srBg=${document.body.dataset.srBg ?? "unset"} srStyle=${document.body.dataset.srStyle ?? "unset"}`,
+      `active file: ${this.activeNoteFile()?.path ?? "none"}`,
+      `version: ${this.manifest.version}`,
+    ];
+    const report = lines.join("\n");
+    console.info("[Semantic Reading] diagnosis\n" + report);
+    try {
+      const dir = this.manifest.dir ?? "";
+      const path = dir === "" ? "diagnosis.txt" : `${dir.replace(/\/+$/, "")}/diagnosis.txt`;
+      await this.app.vault.adapter.write(path, report + "\n");
+      new Notice(`Semantic Reading diagnosis: marks applied ${s.marksApplied}, store ${this.store.size()}, sectionInfoNull ${s.sectionInfoNull}. Full report: ${path}`, 12000);
+    } catch (e) {
+      new Notice(`Semantic Reading diagnosis (file write failed): marks applied ${s.marksApplied}, store ${this.store.size()}, sectionInfoNull ${s.sectionInfoNull}. See console.`, 12000);
     }
   }
 

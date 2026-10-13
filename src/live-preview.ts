@@ -1,4 +1,5 @@
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate } from "@codemirror/view";
+import { stats } from "./stats";
 import { StateEffect, StateEffectType, Extension, RangeSetBuilder } from "@codemirror/state";
 import { BlockRef, isClassifiable, splitBlocks } from "./blocks";
 import { locateSpans, SPAN_CLASS, SPAN_LABEL, SpanRole } from "./spans";
@@ -57,6 +58,7 @@ export function buildLivePreviewExtension(deps: LivePreviewDeps): Extension[] {
       constructor(view: EditorView) {
         this.view = view;
         liveViews.add(view);
+        stats.liveViews = liveViews.size;
         this.decorations = buildDecorations(view, deps.store, deps.enabledSpans());
       }
       update(u: ViewUpdate) {
