@@ -2,7 +2,7 @@
    Roles carry one hue each; hue stays constant across themes, only alpha changes.
    Palette separation is guarded by tests/palette.test.ts (OKLab dE >= 0.1 between roles). */
 
-body {
+  --sr-definition: #db2777;
   --sr-claim: #6366f1;
   --sr-evidence: #14b8a6;
   --sr-caveat: #d97706;
