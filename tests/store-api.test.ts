@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createAnnotationStore, parseStoreFile, AnnotationRecord } from "../src/store";
 import { hashBlock, normalizeBlock } from "../src/blocks";
-import { parseClassifyResponse, ClassifyItem } from "../src/api";
+import { parseClassifyResponse, buildClassifyBody, ClassifyItem } from "../src/api";
 
 const h1 = hashBlock(normalizeBlock(["结论一"]));
 const h2 = hashBlock(normalizeBlock(["证据二"]));
@@ -105,5 +105,16 @@ describe("parseClassifyResponse", () => {
     expect(res.ok).toBe(false);
     expect(!res.ok && res.failure.reason).toBe("parse");
     expect(parseClassifyResponse({}, items).ok).toBe(false);
+  });
+});
+
+describe("buildClassifyBody thinking flag", () => {
+  const items: ClassifyItem[] = [{ hash: h1, kind: "paragraph", text: "结论一", context: [] }];
+
+  test("omits thinking by default and includes it when requested", () => {
+    const off = JSON.parse(buildClassifyBody({ baseUrl: "http://x", apiKey: "k", model: "m" }, items)) as Record<string, unknown>;
+    expect("thinking" in off).toBe(false);
+    const on = JSON.parse(buildClassifyBody({ baseUrl: "http://x", apiKey: "k", model: "m", disableThinking: true }, items)) as Record<string, unknown>;
+    expect(on.thinking).toEqual({ type: "disabled" });
   });
 });

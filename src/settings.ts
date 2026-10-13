@@ -16,6 +16,7 @@ export interface Settings {
   baseUrl: string;
   apiKey: string;
   model: string;
+  disableThinking: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -27,6 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
   baseUrl: "",
   apiKey: "",
   model: "",
+  disableThinking: true,
 };
 
 export function parseSettings(raw: unknown): Settings {
@@ -44,6 +46,7 @@ export function parseSettings(raw: unknown): Settings {
   if ("baseUrl" in raw && typeof raw.baseUrl === "string") s.baseUrl = raw.baseUrl;
   if ("apiKey" in raw && typeof raw.apiKey === "string") s.apiKey = raw.apiKey;
   if ("model" in raw && typeof raw.model === "string") s.model = raw.model;
+  if ("disableThinking" in raw && typeof raw.disableThinking === "boolean") s.disableThinking = raw.disableThinking;
   return s;
 }
 
@@ -53,7 +56,7 @@ export function serializeSettings(s: Settings): Record<string, unknown> {
 
 export function apiConfigOf(s: Settings): ApiConfig | null {
   if (s.baseUrl === "" || s.apiKey === "" || s.model === "") return null;
-  return { baseUrl: s.baseUrl, apiKey: s.apiKey, model: s.model };
+  return { baseUrl: s.baseUrl, apiKey: s.apiKey, model: s.model, disableThinking: s.disableThinking };
 }
 
 export function applyAppearance(s: Settings): void {
@@ -148,6 +151,16 @@ export class SemanticReadingSettingTab extends PluginSettingTab {
         await this.plugin.saveSettings();
       }),
     );
+
+    new Setting(containerEl)
+      .setName("Disable model thinking")
+      .setDesc("Sends thinking: disabled. Keeps GLM labeling fast; turn off if your provider rejects the field.")
+      .addToggle((t) =>
+        t.setValue(s.disableThinking).onChange(async (v) => {
+          s.disableThinking = v;
+          await this.plugin.saveSettings();
+        }),
+      );
     new Setting(containerEl).setName("Test connection").addButton((b) =>
       b.setButtonText("Test").onClick(async () => {
         const api = apiConfigOf(s);

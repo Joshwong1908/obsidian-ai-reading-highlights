@@ -5,6 +5,7 @@ export interface ApiConfig {
   baseUrl: string;
   apiKey: string;
   model: string;
+  readonly disableThinking?: boolean;
 }
 
 export interface ClassifyItem {
@@ -44,7 +45,7 @@ export function buildClassifyBody(api: ApiConfig, items: readonly ClassifyItem[]
     const ctx = item.context.length > 0 ? ` (section: ${item.context.join(" > ")})` : "";
     return `[${n + 1}]${ctx}\n${text}`;
   });
-  return JSON.stringify({
+  const body: Record<string, unknown> = {
     model: api.model,
     temperature: 0,
     response_format: { type: "json_object" },
@@ -52,7 +53,9 @@ export function buildClassifyBody(api: ApiConfig, items: readonly ClassifyItem[]
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: `Label each block. Blocks:\n\n${parts.join("\n\n")}\n\nAnswer: {"labels": [{"i": 1, "role": "..."}]}` },
     ],
-  });
+  };
+  if (api.disableThinking === true) body.thinking = { type: "disabled" };
+  return JSON.stringify(body);
 }
 
 export function parseClassifyResponse(raw: unknown, items: readonly ClassifyItem[]): ClassifyResult {
