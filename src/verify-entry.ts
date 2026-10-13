@@ -42,6 +42,7 @@ export function decorateDocument(markdown: string, container: HTMLElement): { gr
     if (el === undefined) break;
     const text = lines.slice(group.fromLine, group.toLine + 1).join("\n");
     decorator(el as HTMLElement, { getSectionInfo: () => ({ text, lineStart: group.fromLine, lineEnd: group.toLine }) } as unknown as MarkdownPostProcessorContext);
+    paired++;
   }
 
   const decorated: Record<string, number> = {};
@@ -49,4 +50,18 @@ export function decorateDocument(markdown: string, container: HTMLElement): { gr
     decorated[role] = container.querySelectorAll(`.sr-${role}`).length;
   }
   return { groups: groups.length, decorated };
+}
+
+export function diagnose(markdown: string): { seeded: number; sections: { text: string; hashes: number; hits: number }[] } {
+  const store = createAnnotationStore({ capacity: 1000, persist: async () => {}, schedule: () => () => {} }, []);
+  const blocks = splitBlocks(markdown).blocks;
+  const guesses = heuristicClassify(blocks);
+  store.put(guesses.map((g) => ({ hash: g.hash, role: g.role, meta: { source: "heuristic" as const } })));
+  const lines = markdown.split("\n");
+  const sections = blocks.slice(0, 8).map((b) => {
+    const text = lines.slice(b.fromLine, b.toLine + 1).join("\n");
+    const re = splitBlocks(text).blocks;
+    return { text: text.slice(0, 30), hashes: re.length, hits: re.filter((x) => store.get(x.hash) !== null).length };
+  });
+  return { seeded: guesses.length, sections };
 }
