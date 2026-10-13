@@ -24,34 +24,41 @@ const toOklab = ([r, g, b]: number[]): number[] => {
   ];
 };
 
-function colorOf(varName: string): number[] {
-  const m = new RegExp(`--sr-${varName}:\\s*#([0-9a-f]{6})`).exec(css);
+function colorOf(block: string, varName: string): number[] {
+  const m = new RegExp(`--sr-${varName}:\\s*#([0-9a-f]{6})`).exec(block);
   if (m === null) throw new Error(`missing --sr-${varName}`);
   return [0, 2, 4].map((i) => parseInt(m[1]!.slice(i, i + 2), 16));
 }
 
-describe("inline palette separation (styles.css)", () => {
-  test("three highlight colors stay perceptually distinct (OKLab dE >= 0.1)", () => {
-    const colors = ["kp", "term", "concept"].map(colorOf).map(toOklab);
-    for (let a = 0; a < colors.length; a++) {
-      for (let b = a + 1; b < colors.length; b++) {
-        const dE = Math.hypot(...colors[a]!.map((v, i) => v - colors[b]![i]!));
-        expect(dE).toBeGreaterThanOrEqual(0.1);
-      }
-    }
-  });
+const lightBlock = css.slice(css.indexOf("body {"), css.indexOf('body[data-sr-bg="dark"]'));
+const darkBlock = css.slice(css.indexOf('body[data-sr-bg="dark"]'), css.indexOf("mark.sr {"));
 
-  test("keypoint wash keeps text readable (blend contrast >= 7:1 on white)", () => {
-    const kp = colorOf("kp");
-    const alphaMatch = /--sr-kp-alpha:\s*([\d.]+)%/.exec(css);
-    if (alphaMatch === null) throw new Error("missing --sr-kp-alpha");
-    const alpha = parseInt(alphaMatch[1], 10) / 100;
-    const eff = kp.map((c) => c * alpha + 255 * (1 - alpha));
-    const lum = (rgb: number[]) => 0.2126 * srgbToLinear(rgb[0]!) + 0.7152 * srgbToLinear(rgb[1]!) + 0.0722 * srgbToLinear(rgb[2]!);
-    const text = [0x1f, 0x23, 0x28];
-    const contrast = (lum([255, 255, 255]) + 0.05) / (lum(text.map((c) => c)) + 0.05);
-    const onWash = (Math.max(lum(text), lum(eff)) + 0.05) / (Math.min(lum(text), lum(eff)) + 0.05);
-    expect(onWash).toBeGreaterThanOrEqual(7);
-    expect(contrast).toBeGreaterThan(onWash);
-  });
+describe("highlight palette separation (styles.css)", () => {
+  for (const [name, block] of [
+    ["light", lightBlock],
+    ["dark", darkBlock],
+  ] as const) {
+    test(`${name} palette: three highlight colors stay perceptually distinct (dE >= 0.1)`, () => {
+      const colors = ["kp", "term", "concept"].map((v) => colorOf(block, v)).map(toOklab);
+      for (let a = 0; a < colors.length; a++) {
+        for (let b = a + 1; b < colors.length; b++) {
+          const dE = Math.hypot(...colors[a]!.map((v, i) => v - colors[b]![i]!));
+          expect(dE).toBeGreaterThanOrEqual(0.1);
+        }
+      }
+    });
+
+    test(`${name} palette: keypoint wash keeps text readable (blend contrast >= 7:1 on white / >= 4.5:1 on near-black)`, () => {
+      const kp = colorOf(block, "kp");
+      const alphaMatch = new RegExp(`--sr-kp-alpha:\\s*([\\d.]+)%`).exec(block);
+      if (alphaMatch === null) throw new Error("missing --sr-kp-alpha");
+      const alpha = parseInt(alphaMatch[1], 10) / 100;
+      const lum = (rgb: number[]) => 0.2126 * srgbToLinear(rgb[0]!) + 0.7152 * srgbToLinear(rgb[1]!) + 0.0722 * srgbToLinear(rgb[2]!);
+      const bg = name === "light" ? [255, 255, 255] : [27, 27, 31];
+      const text = name === "light" ? [31, 35, 40] : [214, 215, 219];
+      const eff = kp.map((c, i) => c * alpha + bg[i]! * (1 - alpha));
+      const contrast = (Math.max(lum(text), lum(eff)) + 0.05) / (Math.min(lum(text), lum(eff)) + 0.05);
+      expect(contrast).toBeGreaterThanOrEqual(name === "light" ? 7 : 4.5);
+    });
+  }
 });

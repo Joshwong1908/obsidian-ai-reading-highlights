@@ -8,12 +8,11 @@ Built for dense Chinese and English technical notes where the value is in scanni
 
 | Highlight | Meaning | Styling |
 |---|---|---|
-| Keypoint | The sentence that carries a block's point | Warm sentence wash, 16% alpha |
-| Term | Domain keywords worth remembering | Solid indigo underline |
-| Concept | Named models, methods, laws | Dotted teal underline |
+| Keypoint | The sentence that carries a block's point | Marker-pen gradient wash with soft edges |
+| Term | Domain keywords worth remembering | Solid indigo underline, skip-ink |
+| Concept | Named models, methods, laws | Dotted teal underline, or a tinted pill in pill style |
 
-Each highlight category can be toggled in settings. The keypoint wash keeps text contrast far above WCAG AA; underline colors are perceptually distinct by test (OKLab ΔE ≥ 0.1).
-
+Hover any highlight to see its role in a small chip. Two style presets (marker pen, concept pill) are switchable in settings. Colors adapt to your theme: the plugin measures the background luminance and switches hue brightness and wash intensity for light and dark backgrounds, so community themes like Nord or sepia papers stay readable. Text contrast stays above 7:1 on light themes and above 4.5:1 on dark ones, verified by test.
 Two engines produce the highlights:
 
 - **API engine.** Any OpenAI-compatible endpoint. The model copies verbatim quotes from each block and tags them; quotes that cannot be anchored back into the text are dropped, hallucinated highlights cannot render.

@@ -85,3 +85,10 @@ User verdict on v1: a few large color blocks do not aid reading; the ask is sent
 - The offline heuristic now extracts bold runs as kp and quoted runs as terms, which fits how these notes already encode emphasis.
 
 Verification additions: spans anchoring unit tests; mock-server e2e asserting span parsing; browser harness rendering the sample note with real GLM annotations (65/65 spans rendered, 23 inside list items, zero nested or empty marks, 44/44 sections paired).
+
+## v3 addendum: theme-aware presentation (2026-10-13)
+
+- Keypoint switched from a flat wash to a marker-pen gradient (soft left/right edges, rounded, box-decoration-break per line), with a subtle saturate-on-hover feedback. Concept gained a second style: tinted pill (`data-sr-style="pill"`), selectable in settings.
+- Every mark carries `data-sr-label` (set by the DOM wrapper and by CM6 mark attributes) and shows a CSS-only role chip on hover. No status bar, no JS on hover.
+- Theme integration is luminance-based rather than class-based: `theme.ts` measures the body background, sets `data-sr-bg=light|dark` (threshold 0.25), and re-measures on a debounced MutationObserver, so community themes that are dark-ish lights or custom backgrounds adapt correctly. Dark backgrounds also shift role hues brighter (`--sr-kp` #e8a33d etc.) and raise underline opacity.
+- Measured on four simulated backgrounds (white, near-black, Nord slate, sepia): wash-background delta 0.03-0.20 luminance (visible), text-on-wash contrast 6.3-12.8:1 (all above WCAG AA; light themes above 7:1).

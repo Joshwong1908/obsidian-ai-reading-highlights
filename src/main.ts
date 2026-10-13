@@ -7,7 +7,9 @@ import { buildLivePreviewExtension, repaintLivePreviews } from "./live-preview";
 import { SemanticReadingSettingTab, Settings, apiConfigOf, parseSettings, serializeSettings } from "./settings";
 import { obsidianTransport } from "./transport";
 import { HttpTransport } from "./api";
+import { watchThemeAdaptation } from "./theme";
 import { SpanRole } from "./spans";
+import { applyHighlightStyle } from "./settings";
 
 const CACHE_FILE = "cache.json";
 const CACHE_CAPACITY = 5000;
@@ -25,6 +27,7 @@ export default class SemanticReadingPlugin extends Plugin {
   pipeline!: Pipeline;
   transport: HttpTransport = obsidianTransport;
   private offStoreRepaint: (() => void) | null = null;
+  private offThemeWatch: () => void = () => {};
 
   public override async onload(): Promise<void> {
     await this.loadPluginState();
@@ -79,6 +82,9 @@ export default class SemanticReadingPlugin extends Plugin {
     });
 
     this.addSettingTab(new SemanticReadingSettingTab(this.app, this));
+    applyHighlightStyle(this.cfg);
+    this.register(() => this.offThemeWatch());
+    this.offThemeWatch = watchThemeAdaptation();
   }
 
   public override onunload(): void {

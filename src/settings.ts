@@ -3,8 +3,11 @@ import type SemanticReadingPlugin from "./main";
 import { SPAN_ROLES, SPAN_LABEL, SpanRole } from "./spans";
 import { ApiConfig, HttpTransport, probeApi } from "./api";
 
+export type HighlightStyle = "marker" | "pill";
+
 export interface Settings {
   enabled: boolean;
+  style: HighlightStyle;
   highlights: ReadonlySet<SpanRole>;
   baseUrl: string;
   apiKey: string;
@@ -14,6 +17,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   enabled: true,
+  style: "marker",
   highlights: new Set([...SPAN_ROLES]),
   baseUrl: "",
   apiKey: "",
@@ -34,11 +38,16 @@ export function parseSettings(raw: unknown): Settings {
   if ("apiKey" in raw && typeof raw.apiKey === "string") s.apiKey = raw.apiKey;
   if ("model" in raw && typeof raw.model === "string") s.model = raw.model;
   if ("disableThinking" in raw && typeof raw.disableThinking === "boolean") s.disableThinking = raw.disableThinking;
+  if ("style" in raw && (raw.style === "marker" || raw.style === "pill")) s.style = raw.style;
   return s;
 }
 
 export function serializeSettings(s: Settings): Record<string, unknown> {
   return { ...s, highlights: [...s.highlights] };
+}
+
+export function applyHighlightStyle(s: Settings): void {
+  document.body.dataset.srStyle = s.style;
 }
 
 export function apiConfigOf(s: Settings): ApiConfig | null {
@@ -67,6 +76,16 @@ export class SemanticReadingSettingTab extends PluginSettingTab {
       }),
     );
 
+    new Setting(containerEl).setName("Highlight style").addDropdown((d) =>
+      d
+        .addOptions({ marker: "Marker pen", pill: "Concept pill" })
+        .setValue(s.style)
+        .onChange(async (v) => {
+          s.style = v as HighlightStyle;
+          applyHighlightStyle(s);
+          await this.plugin.saveSettings();
+        }),
+    );
     containerEl.createEl("h3", { text: "Highlights" });
     for (const role of SPAN_ROLES) {
       new Setting(containerEl).setName(SPAN_LABEL[role]).addToggle((t) =>
