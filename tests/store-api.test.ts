@@ -22,7 +22,15 @@ describe("annotation store", () => {
     expect(parseStoreFile({ version: 2, entries: records })).toEqual(records);
   });
 
-  test("rejects version-1 caches so notes re-classify", () => {
+  test("accepts legacy version-1 files that already carry span entries", () => {
+    const legacy = parseStoreFile({
+      version: 1,
+      entries: [rec(h1, [{ quote: "结论", role: "kp" }])],
+    });
+    expect(legacy.length).toBe(1);
+  });
+
+  test("rejects old role-shaped entries so those notes re-classify", () => {
     expect(parseStoreFile({ version: 1, entries: [{ hash: "aaaaaaaaaaaaaaaa", role: "claim", meta: { source: "heuristic" }, at: 1 }] })).toEqual([]);
   });
 

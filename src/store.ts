@@ -50,7 +50,7 @@ function parseSpans(raw: unknown): Span[] | null {
 export function parseStoreFile(raw: unknown): readonly AnnotationRecord[] {
   if (typeof raw !== "object" || raw === null) return [];
   if (!("version" in raw) || !("entries" in raw)) return [];
-  if (raw.version !== 2 || !Array.isArray(raw.entries)) return [];
+  if ((raw.version !== 1 && raw.version !== 2) || !Array.isArray(raw.entries)) return [];
   const records: AnnotationRecord[] = [];
   for (const e of raw.entries) {
     if (typeof e !== "object" || e === null) continue;

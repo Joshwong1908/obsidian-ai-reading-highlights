@@ -72,6 +72,10 @@ export default class SemanticReadingPlugin extends Plugin {
       }),
     );
 
+    this.app.workspace.onLayoutReady(() => {
+      const file = this.activeNoteFile();
+      if (file !== null) this.pipeline.fileOpened(file.path);
+    });
     this.addCommand({
       id: "reclassify-note",
       name: "Reclassify current note now",
@@ -111,7 +115,7 @@ export default class SemanticReadingPlugin extends Plugin {
       {
         capacity: CACHE_CAPACITY,
         persist: async (records) => {
-          await this.app.vault.adapter.write(cachePath, JSON.stringify({ version: 1, entries: records }));
+          await this.app.vault.adapter.write(cachePath, JSON.stringify({ version: 2, entries: records }));
         },
         schedule: scheduleViaTimeout,
       },

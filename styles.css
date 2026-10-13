@@ -64,7 +64,8 @@ body[data-sr-style="pill"] mark.sr-concept {
 }
 
 body:not([data-sr-style="pill"]) mark.sr-concept {
-  text-decoration-line: underline dotted;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
   text-decoration-color: color-mix(in srgb, var(--sr-concept) var(--sr-concept-alpha), transparent);
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
