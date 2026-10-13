@@ -7,7 +7,9 @@ export interface RenderStats {
   marksApplied: number;
   fallbackSpansUsed: number;
   liveViews: number;
-  repaints: number;
+  liveBuilds: number;
+  liveStoreHits: number;
+  liveMarksBuilt: number;
 }
 
 export const stats: RenderStats = {
@@ -19,7 +21,9 @@ export const stats: RenderStats = {
   marksApplied: 0,
   fallbackSpansUsed: 0,
   liveViews: 0,
-  repaints: 0,
+  liveBuilds: 0,
+  liveStoreHits: 0,
+  liveMarksBuilt: 0,
 };
 
 export function renderStats(): RenderStats {

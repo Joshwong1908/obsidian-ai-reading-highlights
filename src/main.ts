@@ -142,7 +142,7 @@ export default class SemanticReadingPlugin extends Plugin {
       `store: ${this.store.size()} records`,
       `noteSpans cached paths: ${[...this.noteSpans.keys()].join(", ") || "none"}`,
       `render stats: ${JSON.stringify(s)}`,
-      `body datasets: srBg=${document.body.dataset.srBg ?? "unset"} srStyle=${document.body.dataset.srStyle ?? "unset"}`,
+      `live dom: cm-content marks ${document.querySelectorAll(".cm-content .sr-kp, .cm-content .sr-term, .cm-content .sr-concept").length}, all document marks ${document.querySelectorAll("mark.sr, .sr-kp, .sr-term, .sr-concept").length}`,
       `active file: ${this.activeNoteFile()?.path ?? "none"}`,
       `version: ${this.manifest.version}`,
     ];
@@ -152,9 +152,9 @@ export default class SemanticReadingPlugin extends Plugin {
       const dir = this.manifest.dir ?? "";
       const path = dir === "" ? "diagnosis.txt" : `${dir.replace(/\/+$/, "")}/diagnosis.txt`;
       await this.app.vault.adapter.write(path, report + "\n");
-      new Notice(`Semantic Reading diagnosis: marks applied ${s.marksApplied}, store ${this.store.size()}, sectionInfoNull ${s.sectionInfoNull}. Full report: ${path}`, 12000);
+      new Notice(`SR diagnosis: liveBuilt=${s.liveMarksBuilt} liveHits=${s.liveStoreHits} cmMarks=${document.querySelectorAll(".cm-content .sr-kp, .cm-content .sr-term, .cm-content .sr-concept").length} readingMarks=${s.marksApplied} store=${this.store.size()}. Full: ${path}`, 12000);
     } catch (e) {
-      new Notice(`Semantic Reading diagnosis (file write failed): marks applied ${s.marksApplied}, store ${this.store.size()}, sectionInfoNull ${s.sectionInfoNull}. See console.`, 12000);
+      new Notice(`SR diagnosis (write failed): liveBuilt=${s.liveMarksBuilt} liveHits=${s.liveStoreHits} readingMarks=${s.marksApplied} store=${this.store.size()}.`, 12000);
     }
   }
 

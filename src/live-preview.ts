@@ -27,6 +27,7 @@ function rawSliceOf(view: EditorView, block: BlockRef): string {
 }
 
 function buildDecorations(view: EditorView, store: AnnotationStore, enabled: ReadonlySet<SpanRole>): DecorationSet {
+  stats.liveBuilds++;
   const doc = view.state.doc;
   const builder = new RangeSetBuilder<Decoration>();
   const marks: { from: number; to: number; deco: Decoration }[] = [];
@@ -34,6 +35,7 @@ function buildDecorations(view: EditorView, store: AnnotationStore, enabled: Rea
     if (!isClassifiable(block.kind)) continue;
     const record = store.get(block.hash);
     if (record === null) continue;
+    stats.liveStoreHits++;
     const spans = record.spans.filter((s) => enabled.has(s.role));
     if (spans.length === 0) continue;
     const raw = rawSliceOf(view, block);
@@ -45,6 +47,7 @@ function buildDecorations(view: EditorView, store: AnnotationStore, enabled: Rea
       marks.push({ from, to, deco: Decoration.mark({ class: `sr ${SPAN_CLASS[loc.role]}`, attributes: { "data-sr-label": SPAN_LABEL[loc.role] } }) });
     }
   }
+  stats.liveMarksBuilt = marks.length;
   marks.sort((a, b) => a.from - b.from || a.to - b.to);
   for (const m of marks) builder.add(m.from, m.to, m.deco);
   return builder.finish();
