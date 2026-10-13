@@ -20,6 +20,7 @@ export interface AnnotationStore {
   delete(hashes: readonly BlockHash[]): void;
   onUpdate(listener: StoreListener): () => void;
   flush(): Promise<void>;
+  clear(): void;
   size(): number;
 }
 
@@ -127,6 +128,11 @@ export function createAnnotationStore(deps: StoreDeps, initial: readonly Annotat
       return () => listeners.delete(listener);
     },
     flush: persistNow,
+    clear() {
+      map.clear();
+      scheduleFlush();
+      emit([]);
+    },
     size() {
       return map.size;
     },

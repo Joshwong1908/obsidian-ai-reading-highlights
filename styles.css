@@ -58,12 +58,12 @@ body[data-sr-grammar="border"] .sr {
   background: transparent;
   padding-right: 0;
 }
-
-.markdown-rendered.sr-pending > * {
-  transition: none;
+.sr.sr-heur {
+  border-left-style: dashed;
 }
 
 .sr-status {
   color: var(--text-muted);
   font-size: var(--font-ui-smaller);
+  margin-block-start: 0;
 }
