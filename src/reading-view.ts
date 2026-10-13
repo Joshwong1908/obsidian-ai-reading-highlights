@@ -7,10 +7,12 @@ export interface ReadingViewDeps {
   readonly store: AnnotationStore;
   readonly enabledSpans: () => ReadonlySet<SpanRole>;
   readonly onStoreChange: (listener: () => void) => () => void;
+  readonly spansFor: (path: string) => readonly Span[];
 }
 
 interface Registered {
   readonly el: HTMLElement;
+  readonly sourcePath: string;
   readonly blocks: readonly { hash: BlockHash; text: string }[];
 }
 
@@ -101,6 +103,20 @@ function wrapPiece(piece: Piece): void {
 }
 
 export function decorateElement(el: HTMLElement, blocks: readonly { hash: BlockHash; text: string }[], store: AnnotationStore, enabled: ReadonlySet<SpanRole>): void {
+  applySpans(el, collectBlockSpans(blocks, store, enabled), enabled);
+}
+
+function collectBlockSpans(blocks: readonly { hash: BlockHash; text: string }[], store: AnnotationStore, enabled: ReadonlySet<SpanRole>): Span[] {
+  const spans: Span[] = [];
+  for (const b of blocks) {
+    const record = store.get(b.hash);
+    if (record === null) continue;
+    for (const s of record.spans) if (enabled.has(s.role)) spans.push(s);
+  }
+  return spans;
+}
+
+export function applySpans(el: HTMLElement, spans: readonly Span[], enabled: ReadonlySet<SpanRole>): void {
   for (const mark of [...el.querySelectorAll("mark.sr")]) {
     const parent = mark.parentNode;
     if (parent === null) continue;
@@ -108,12 +124,6 @@ export function decorateElement(el: HTMLElement, blocks: readonly { hash: BlockH
     parent.removeChild(mark);
   }
   el.normalize();
-  const spans: Span[] = [];
-  for (const b of blocks) {
-    const record = store.get(b.hash);
-    if (record === null) continue;
-    for (const s of record.spans) if (enabled.has(s.role)) spans.push(s);
-  }
   if (spans.length === 0) return;
   const { stream, segments } = collectSegments(el);
   const ranges = locateInStream(stream, spans);
@@ -135,18 +145,21 @@ export function createReadingViewDecorator(deps: ReadingViewDeps): MarkdownPostP
         registry.splice(n, 1);
         continue;
       }
-      decorateElement(entry.el, entry.blocks, deps.store, deps.enabledSpans());
+      const blockSpans = collectBlockSpans(entry.blocks, deps.store, deps.enabledSpans());
+      const fallback = blockSpans.length === 0 ? deps.spansFor(entry.sourcePath).filter((s) => deps.enabledSpans().has(s.role)) : blockSpans;
+      applySpans(entry.el, fallback, deps.enabledSpans());
     }
   });
 
   return (el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
     const info = ctx.getSectionInfo(el);
-    if (info === null) return;
-    const blocks = splitBlocks(info.text)
+    const blocks = info === null ? [] : splitBlocks(info.text)
       .blocks.filter((b) => isClassifiable(b.kind))
       .map((b) => ({ hash: b.hash, text: b.text }));
-    if (blocks.length === 0) return;
-    decorateElement(el, blocks, deps.store, deps.enabledSpans());
-    registry.push({ el, blocks });
+    const enabled = deps.enabledSpans();
+    const blockSpans = collectBlockSpans(blocks, deps.store, enabled);
+    const spans = blockSpans.length > 0 ? blockSpans : deps.spansFor(ctx.sourcePath).filter((s) => enabled.has(s.role));
+    applySpans(el, spans, enabled);
+    registry.push({ el, sourcePath: ctx.sourcePath, blocks });
   };
 }

@@ -1,6 +1,7 @@
 import { BlockHash, BlockRef, isClassifiable, splitBlocks } from "./blocks";
 import { heuristicSpans } from "./heuristic";
 import { ApiConfig, ClassifyItem, HttpTransport, classifyViaApi } from "./api";
+import { Span } from "./spans";
 import { AnnotationStore, StorableRecord } from "./store";
 
 export interface PipelineSettings {
@@ -16,6 +17,7 @@ export interface PipelineDeps {
   readonly transport: HttpTransport;
   readonly notify: (msg: string) => void;
   readonly schedule: (fn: () => void, ms: number) => () => void;
+  readonly onNoteSpans?: (path: string, spans: readonly Span[]) => void;
   readonly now?: () => number;
 }
 
@@ -99,6 +101,15 @@ export function createPipeline(deps: PipelineDeps): Pipeline {
       else if (apiEnabled && hit.meta.source === "heuristic") upgrade.push(item);
     }
 
+    const emitSpans = () => {
+      if (deps.onNoteSpans === undefined) return;
+      const spans: Span[] = [];
+      for (const item of items) {
+        const rec = deps.store.get(item.hash);
+        if (rec !== null) for (const s of rec.spans) spans.push(s);
+      }
+      deps.onNoteSpans(path, spans);
+    };
     const missHashes = new Set<BlockHash>(stale.map((i) => i.hash));
     const guesses = heuristicSpans(index.blocks).filter((g) => missHashes.has(g.hash));
     if (guesses.length > 0) {
@@ -108,7 +119,10 @@ export function createPipeline(deps: PipelineDeps): Pipeline {
     const api = deps.settings().api;
     const wantsApi = api !== null && (stale.length > 0 || upgrade.length > 0);
     const cooledDown = now() < apiCooldownUntil;
-    if (api === null || !wantsApi || (cooledDown && !force)) return;
+    if (api === null || !wantsApi || (cooledDown && !force)) {
+      emitSpans();
+      return;
+    }
 
     const batch = [...stale, ...upgrade];
     for (const chunk of chunkByBudget(batch, deps.settings().charBudget)) {
@@ -134,6 +148,7 @@ export function createPipeline(deps: PipelineDeps): Pipeline {
         }
       }
     }
+    emitSpans();
   };
 
   const tracked = (path: string, force: boolean): void => {

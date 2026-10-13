@@ -4,17 +4,17 @@ import { createAnnotationStore, AnnotationStore, parseStoreFile } from "./store"
 import { createPipeline, Pipeline, PipelineSettings } from "./pipeline";
 import { createReadingViewDecorator } from "./reading-view";
 import { buildLivePreviewExtension, repaintLivePreviews } from "./live-preview";
-import { SemanticReadingSettingTab, Settings, apiConfigOf, parseSettings, serializeSettings } from "./settings";
+import { SemanticReadingSettingTab, Settings, apiConfigOf, applyHighlightStyle, parseSettings, serializeSettings } from "./settings";
 import { obsidianTransport } from "./transport";
 import { HttpTransport } from "./api";
 import { watchThemeAdaptation } from "./theme";
-import { SpanRole } from "./spans";
-import { applyHighlightStyle } from "./settings";
+import { Span, SpanRole } from "./spans";
 
 const CACHE_FILE = "cache.json";
 const CACHE_CAPACITY = 5000;
 const CHAR_BUDGET = 16000;
 const EDIT_DEBOUNCE_MS = 1500;
+const NOTE_SPANS_CAPACITY = 16;
 
 const scheduleViaTimeout = (fn: () => void, ms: number): (() => void) => {
   const t = setTimeout(fn, ms);
@@ -28,6 +28,7 @@ export default class SemanticReadingPlugin extends Plugin {
   transport: HttpTransport = obsidianTransport;
   private offStoreRepaint: (() => void) | null = null;
   private offThemeWatch: () => void = () => {};
+  private readonly noteSpans = new Map<string, readonly Span[]>();
 
   public override async onload(): Promise<void> {
     await this.loadPluginState();
@@ -41,6 +42,7 @@ export default class SemanticReadingPlugin extends Plugin {
         new Notice(msg, 6000);
       },
       schedule: scheduleViaTimeout,
+      onNoteSpans: (path, spans) => this.rememberSpans(path, spans),
     });
 
     const enabledSpans = (): ReadonlySet<SpanRole> => (this.cfg.enabled ? this.cfg.highlights : new Set<SpanRole>());
@@ -49,6 +51,7 @@ export default class SemanticReadingPlugin extends Plugin {
       createReadingViewDecorator({
         store: this.store,
         enabledSpans,
+        spansFor: (path) => this.noteSpans.get(path) ?? [],
         onStoreChange: (listener) => this.store.onUpdate(() => listener()),
       }),
     );
@@ -99,6 +102,16 @@ export default class SemanticReadingPlugin extends Plugin {
 
   public async saveSettings(): Promise<void> {
     await this.saveData(serializeSettings(this.cfg));
+  }
+
+  private rememberSpans(path: string, spans: readonly Span[]): void {
+    this.noteSpans.delete(path);
+    this.noteSpans.set(path, spans);
+    while (this.noteSpans.size > NOTE_SPANS_CAPACITY) {
+      const oldest = this.noteSpans.keys().next();
+      if (oldest.done) break;
+      this.noteSpans.delete(oldest.value);
+    }
   }
 
   private async loadPluginState(): Promise<void> {
