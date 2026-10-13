@@ -4,7 +4,7 @@ import { createPipeline, Pipeline, PipelineSettings } from "../src/pipeline";
 import { splitBlocks, BlockHash } from "../src/blocks";
 import { HttpTransport } from "../src/api";
 
-const DOC_A = "# 结论\n\n因此这个方案成立。\n";
+const DOC_A = "# 结论\n\n因此这个**方案成立**，关键在验证器。\n";
 
 function hashOf(markdown: string, excerpt: string): BlockHash {
   const block = splitBlocks(markdown).blocks.find((b) => b.text.includes(excerpt));
@@ -15,10 +15,9 @@ function hashOf(markdown: string, excerpt: string): BlockHash {
 interface Harness {
   reads: string[];
   transports: string[];
-  events: string[];
+  events: number;
   settings: PipelineSettings;
   clock: { advance: (ms: number) => void };
-  persist: AnnotationRecord[][];
   store: AnnotationStore;
   pipeline: Pipeline;
 }
@@ -26,8 +25,7 @@ interface Harness {
 function makeHarness(doc: string, transport: HttpTransport, settings?: Partial<PipelineSettings>): Harness {
   const reads: string[] = [];
   const transports: string[] = [];
-  const events: string[] = [];
-  const persist: AnnotationRecord[][] = [];
+  let events = 0;
   const timers: { at: number; fn: () => void; cancelled: boolean }[] = [];
   let clockNow = 0;
   const mutable: PipelineSettings = {
@@ -39,9 +37,7 @@ function makeHarness(doc: string, transport: HttpTransport, settings?: Partial<P
   const store = createAnnotationStore(
     {
       capacity: 100,
-      persist: async (records) => {
-        persist.push([...records]);
-      },
+      persist: async () => {},
       schedule: (fn, ms) => {
         const rec = { at: clockNow + ms, fn, cancelled: false };
         timers.push(rec);
@@ -53,7 +49,7 @@ function makeHarness(doc: string, transport: HttpTransport, settings?: Partial<P
     },
     [],
   );
-  store.onUpdate((hashes) => events.push(hashes.join(",")));
+  store.onUpdate(() => events++);
   const pipeline = createPipeline({
     store,
     read: async (path) => {
@@ -78,7 +74,9 @@ function makeHarness(doc: string, transport: HttpTransport, settings?: Partial<P
   return {
     reads,
     transports,
-    events,
+    get events() {
+      return events;
+    },
     settings: mutable,
     clock: {
       advance(ms) {
@@ -91,36 +89,40 @@ function makeHarness(doc: string, transport: HttpTransport, settings?: Partial<P
         }
       },
     },
-    persist,
     store,
     pipeline,
   };
 }
 
-const okTransport: HttpTransport = async (req) => {
+const spanTransport: HttpTransport = async (req) => {
   const body = JSON.parse(req.body) as { messages: { content: string }[] };
   const user = body.messages[1]!.content;
   const blockCount = (user.match(/^\[\d+\]/gm) ?? []).length;
-  const labels = Array.from({ length: blockCount }, (_, i) => ({ i: i + 1, role: "claim" }));
+  const blocks = Array.from({ length: blockCount }, (_, i) => ({
+    i: i + 1,
+    spans: [{ quote: "验证器", role: "term" }, { quote: "方案成立", role: "kp" }],
+  }));
   return {
     status: 200,
-    body: JSON.stringify({ choices: [{ message: { content: JSON.stringify({ labels }) } }] }),
+    body: JSON.stringify({ choices: [{ message: { content: JSON.stringify({ blocks }) } }] }),
   };
 };
 
-describe("pipeline lifecycle", () => {
-  test("heuristic lands instantly, api refines to the same role source", async () => {
-    const h = makeHarness(DOC_A, okTransport);
+describe("pipeline lifecycle (spans)", () => {
+  test("heuristic spans land instantly, api refines", async () => {
+    const h = makeHarness(DOC_A, spanTransport);
     h.pipeline.fileOpened("a.md");
     await h.pipeline.idle();
-    const hash = hashOf(DOC_A, "因此这个方案成立");
-    expect(h.events.length).toBeGreaterThan(0);
+    const hash = hashOf(DOC_A, "方案成立");
+    const record = h.store.get(hash);
+    expect(record).not.toBeNull();
     expect(h.transports.length).toBe(1);
-    expect(h.store.get(hash)?.meta.source).toBe("api");
+    expect(record!.meta.source).toBe("api");
+    expect(record!.spans).toContainEqual({ quote: "验证器", role: "term" });
   });
 
   test("re-open with everything cached makes no api call", async () => {
-    const h = makeHarness(DOC_A, okTransport);
+    const h = makeHarness(DOC_A, spanTransport);
     h.pipeline.fileOpened("a.md");
     await h.pipeline.idle();
     const calls = h.transports.length;
@@ -130,7 +132,7 @@ describe("pipeline lifecycle", () => {
   });
 
   test("rapid edits collapse into one debounced run", async () => {
-    const h = makeHarness(DOC_A, okTransport);
+    const h = makeHarness(DOC_A, spanTransport);
     h.pipeline.fileEdited("a.md");
     h.pipeline.fileEdited("a.md");
     h.pipeline.fileEdited("a.md");
@@ -140,12 +142,12 @@ describe("pipeline lifecycle", () => {
     expect(h.reads.length).toBe(1);
   });
 
-  test("api failure keeps heuristic colors and cools down", async () => {
+  test("api failure keeps heuristic spans and cools down", async () => {
     const failing: HttpTransport = async () => ({ status: 500, body: "boom" });
     const h = makeHarness(DOC_A, failing);
     h.pipeline.fileOpened("a.md");
     await h.pipeline.idle();
-    const hash = hashOf(DOC_A, "因此这个方案成立");
+    const hash = hashOf(DOC_A, "方案成立");
     expect(h.store.get(hash)?.meta.source).toBe("heuristic");
     h.pipeline.fileOpened("a.md");
     await h.pipeline.idle();
@@ -159,7 +161,7 @@ describe("pipeline lifecycle", () => {
     let releaseFirst: (() => void) | null = null;
     const slow: HttpTransport = (req) => {
       const { promise, resolve } = Promise.withResolvers<{ status: number; body: string }>();
-      releaseFirst = () => resolve(okTransport(req));
+      releaseFirst = () => resolve(spanTransport(req));
       return promise;
     };
     const h = makeHarness(DOC_A, slow);
@@ -174,7 +176,7 @@ describe("pipeline lifecycle", () => {
     await microtasks();
     releaseFirst!();
     await h.pipeline.idle();
-    const hash = hashOf(DOC_A, "因此这个方案成立");
+    const hash = hashOf(DOC_A, "方案成立");
     expect(h.store.get(hash)?.meta.source).toBe("heuristic");
   });
 });

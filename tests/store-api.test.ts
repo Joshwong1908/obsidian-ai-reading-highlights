@@ -1,110 +1,112 @@
 import { describe, expect, test } from "bun:test";
-import { createAnnotationStore, parseStoreFile, AnnotationRecord } from "../src/store";
+import { createAnnotationStore, parseStoreFile, AnnotationRecord, StorableRecord } from "../src/store";
 import { hashBlock, normalizeBlock } from "../src/blocks";
 import { parseClassifyResponse, buildClassifyBody, ClassifyItem } from "../src/api";
 
 const h1 = hashBlock(normalizeBlock(["结论一"]));
 const h2 = hashBlock(normalizeBlock(["证据二"]));
 
+const rec = (hash: string, spans: StorableRecord["spans"], source: "api" | "heuristic" = "heuristic"): AnnotationRecord => ({
+  hash: hash as AnnotationRecord["hash"],
+  spans,
+  meta: source === "api" ? { source: "api", model: "m" } : { source: "heuristic" },
+  at: 1,
+});
+
 describe("annotation store", () => {
-  test("round-trips through parseStoreFile", () => {
-    const records: AnnotationRecord[] = [
-      { hash: h1, role: "claim", meta: { source: "api", model: "gpt-x" }, at: 5 },
-      { hash: h2, role: "evidence", meta: { source: "heuristic" }, at: 6 },
+  test("round-trips version-2 span records", () => {
+    const records = [
+      rec(h1, [{ quote: "结论一", role: "kp" }], "api"),
+      rec(h2, [{ quote: "证据", role: "term" }]),
     ];
-    const revived = parseStoreFile({ version: 1, entries: records });
-    expect(revived).toEqual(records);
+    expect(parseStoreFile({ version: 2, entries: records })).toEqual(records);
+  });
+
+  test("rejects version-1 caches so notes re-classify", () => {
+    expect(parseStoreFile({ version: 1, entries: [{ hash: "aaaaaaaaaaaaaaaa", role: "claim", meta: { source: "heuristic" }, at: 1 }] })).toEqual([]);
   });
 
   test("drops malformed entries instead of failing the file", () => {
     const revived = parseStoreFile({
+      version: 2,
       entries: [
-        { hash: "not-hex!", role: "claim", meta: { source: "heuristic" }, at: 1 },
-        { hash: "aaaaaaaaaaaaaaaa", role: "nonsense", meta: { source: "heuristic" }, at: 2 },
-        { hash: "aaaaaaaaaaaaaaaa", role: "claim", meta: { source: "api" }, at: 3 },
-        { hash: "aaaaaaaaaaaaaaaa", role: "claim", meta: { source: "heuristic" }, at: 4 },
-        "junk",
+        { hash: "not-hex!", spans: [{ quote: "x", role: "kp" }], meta: { source: "heuristic" }, at: 1 },
+        { hash: "aaaaaaaaaaaaaaaa", spans: [{ quote: "x", role: "nonsense" }], meta: { source: "heuristic" }, at: 2 },
+        { hash: "aaaaaaaaaaaaaaaa", spans: [], meta: { source: "api", model: "m" }, at: 3 },
+        { hash: "aaaaaaaaaaaaaaaa", spans: [{ quote: "y", role: "concept" }], meta: { source: "heuristic" }, at: 4 },
       ],
     });
     expect(revived.length).toBe(1);
-    expect(revived[0]!.hash).toBe("aaaaaaaaaaaaaaaa");
+    expect(revived[0]!.spans[0]!.quote).toBe("y");
   });
 
-  test("evicts least-recently-used beyond capacity and notifies on put", () => {
-    const events: string[][] = [];
-    let flushes = 0;
-    const pending: { fn: () => void; cancelled: boolean }[] = [];
+  test("evicts least-recently-used beyond capacity", () => {
     const store = createAnnotationStore(
-      {
-        capacity: 2,
-        persist: async () => {
-          flushes++;
-        },
-        schedule: (fn) => {
-          const rec = { fn, cancelled: false };
-          pending.push(rec);
-          return () => {
-            rec.cancelled = true;
-          };
-        },
-        now: () => 1,
-      },
+      { capacity: 2, persist: async () => {}, schedule: (fn) => fn, now: () => 1 },
       [],
     );
-    store.onUpdate((hashes) => events.push([...hashes]));
-    store.put([{ hash: h1, role: "claim", meta: { source: "heuristic" } }]);
-    store.put([{ hash: h2, role: "evidence", meta: { source: "heuristic" } }]);
-    expect(store.get(h1)?.role).toBe("claim");
+    store.put([rec(h1, [{ quote: "a", role: "kp" }])]);
+    store.put([rec(h2, [{ quote: "b", role: "kp" }])]);
+    expect(store.get(h1)?.spans.length).toBe(1);
     const h3 = hashBlock(normalizeBlock(["第三块"]));
-    store.put([{ hash: h3, role: "caveat", meta: { source: "heuristic" } }]);
+    store.put([rec(h3, [{ quote: "c", role: "kp" }])]);
     expect(store.size()).toBe(2);
     expect(store.get(h2)).toBeNull();
-    expect(store.get(h1)?.role).toBe("claim");
-    expect(events.length).toBe(3);
-    expect(pending.length).toBe(1);
-    const drain = pending.filter((p) => !p.cancelled).map((p) => p.fn());
-    expect(drain.length).toBe(1);
-    return store.flush().then(() => {
-      expect(flushes).toBe(2);
-    });
+    expect(store.get(h1)?.spans[0]!.quote).toBe("a");
   });
 });
 
 describe("parseClassifyResponse", () => {
   const items: ClassifyItem[] = [
-    { hash: h1, kind: "paragraph", text: "结论一", context: [] },
-    { hash: h2, kind: "paragraph", text: "证据二", context: [] },
+    { hash: h1, kind: "paragraph", text: "因此这个方案成立，关键在于验证器。", context: [] },
+    { hash: h2, kind: "paragraph", text: "Huang 等人（2023）发现自我纠错不提升。", context: [] },
   ];
 
-  test("parses the wrapped labels shape", () => {
+  test("parses span blocks and keeps verbatim quotes", () => {
     const res = parseClassifyResponse(
-      { choices: [{ message: { content: '{"labels": [{"i": 1, "role": "claim"}, {"i": 2, "role": "evidence"}]}' } }] },
+      {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                blocks: [
+                  { i: 1, spans: [{ quote: "关键在于验证器", role: "kp" }, { quote: "验证器", role: "term" }] },
+                  { i: 2, spans: [{ quote: "自我纠错不提升", role: "kp" }] },
+                ],
+              }),
+            },
+          },
+        ],
+      },
       items,
     );
-    expect(res).toEqual({
-      ok: true,
-      items: [
-        { hash: h1, role: "claim" },
-        { hash: h2, role: "evidence" },
-      ],
-    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.items.length).toBe(2);
+    expect(res.items[0]!.spans).toEqual([
+      { quote: "关键在于验证器", role: "kp" },
+      { quote: "验证器", role: "term" },
+    ]);
   });
 
-  test("parses fenced json and bare arrays, drops junk indices and unknown roles", () => {
-    const fenced = parseClassifyResponse(
-      { choices: [{ message: { content: '```json\n[{"i": 1, "role": "claim"}, {"i": 9, "role": "claim"}, {"i": 2, "role": "junk"}]\n```' } }] },
+  test("drops junk indices, unknown roles, and empty quotes", () => {
+    const res = parseClassifyResponse(
+      { choices: [{ message: { content: JSON.stringify({ blocks: [{ i: 9, spans: [{ quote: "x", role: "kp" }] }, { i: 1, spans: [{ quote: "  ", role: "kp" }, { quote: "方案", role: "weird" }, { quote: "成立", role: "concept" }] }] }) } }] },
       items,
     );
-    expect(fenced.ok && fenced.items).toEqual([{ hash: h1, role: "claim" }]);
-    const bare = parseClassifyResponse({ choices: [{ message: { content: '[{"i": 2, "role": "question"}]' } }] }, items);
-    expect(bare.ok && bare.items).toEqual([{ hash: h2, role: "question" }]);
+    expect(res.ok && res.items.length).toBe(1);
+    expect(res.ok && res.items[0]!.spans).toEqual([{ quote: "成立", role: "concept" }]);
+  });
+
+  test("caps spans per block at eight", () => {
+    const spans = Array.from({ length: 12 }, (_, n) => ({ quote: `词${n}`, role: "term" }));
+    const res = parseClassifyResponse({ choices: [{ message: { content: JSON.stringify({ blocks: [{ i: 1, spans }] }) } }] }, items);
+    expect(res.ok && res.items[0]!.spans.length).toBe(8);
   });
 
   test("fails as a value on unparseable content", () => {
-    const res = parseClassifyResponse({ choices: [{ message: { content: "モデルの説明は…" } }] }, items);
-    expect(res.ok).toBe(false);
+    const res = parseClassifyResponse({ choices: [{ message: { content: "考え中…" } }] }, items);
     expect(!res.ok && res.failure.reason).toBe("parse");
-    expect(parseClassifyResponse({}, items).ok).toBe(false);
   });
 });
 

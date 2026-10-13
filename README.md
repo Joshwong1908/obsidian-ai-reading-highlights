@@ -1,52 +1,56 @@
 # Semantic Reading
 
-Colors notes by semantic role at render time, so a long note can be scanned for its conclusions, evidence, caveats, questions, and definitions before it is read line by line. Note files are never modified. Colors live only in the render.
+Highlights what matters inside your notes: the model reads each block, then marks key sentences, key terms, and named concepts directly in the rendered text. Note files are never modified; everything lives in the render.
 
-Built for dense Chinese and English technical notes where the interesting structure (what the author concluded, what it rests on, where it breaks) is implicit in the prose.
+Built for dense Chinese and English technical notes where the value is in scanning what the author concluded, what evidence supports it, and which concepts carry the argument.
 
-## Roles and colors
+## Highlights and styling
 
-| Role | Meaning | Default color (Scholarly preset) |
+| Highlight | Meaning | Styling |
 |---|---|---|
-| Claim | The conclusion or judgment the note argues for | Indigo |
-| Evidence | Sourced findings, experiments, numbers with provenance | Teal |
-| Caveat | Boundary conditions, limitations, failure modes | Amber |
-| Question | Open questions, things to verify | Sky |
-| Definition | Term definitions and mental models | Rose |
+| Keypoint | The sentence that carries a block's point | Warm sentence wash, 16% alpha |
+| Term | Domain keywords worth remembering | Solid indigo underline |
+| Concept | Named models, methods, laws | Dotted teal underline |
 
-Each role gets a 3px left border plus a 13% background tint. The tint keeps text contrast at 13.4:1 on light and 9.0:1 on dark themes; WCAG AA requires 4.5:1. Role-pair separation is at least 0.1 OKLab ΔE in both presets, guarded by `tests/palette.test.ts`.
+Each highlight category can be toggled in settings. The keypoint wash keeps text contrast far above WCAG AA; underline colors are perceptually distinct by test (OKLab ΔE ≥ 0.1).
 
-Two presets ship: Scholarly (cool, default) and Warm paper. Marker style (border + tint, tint only, border only) and intensity (normal, subtle) are switchable in settings. Colors are block-level only: whole paragraphs, list items, and tables.
+Two engines produce the highlights:
+
+- **API engine.** Any OpenAI-compatible endpoint. The model copies verbatim quotes from each block and tags them; quotes that cannot be anchored back into the text are dropped, hallucinated highlights cannot render.
+- **Offline heuristic.** Bold spans become keypoints, quoted phrases become terms. No API, no waiting, always on.
+
+Both reading view and live preview get the same inline marks (DOM `mark` elements and CM6 mark decorations respectively). Source text and the file on disk stay untouched.
 
 ## Install
 
-Copy `main.js`, `manifest.json`, and `styles.css` into `<vault>/.obsidian/plugins/semantic-reading/`, then enable **Semantic Reading** in Settings → Community plugins. Reload Obsidian.
+Copy `main.js`, `manifest.json`, and `styles.css` into `<vault>/.obsidian/plugins/semantic-reading/`, then enable **Semantic Reading** in Settings → Community plugins.
+
+For Zhipu GLM Coding Plan keys: base URL `https://open.bigmodel.cn/api/coding/paas/v4` (the standard `/api/paas/v4` endpoint rejects plan keys), model `glm-5.3-flash`, and leave "Disable model thinking" on, which cuts annotation latency from minutes to seconds.
 
 ## Configure
 
 1. Settings → Semantic Reading → Classification API.
-2. Fill in an OpenAI-compatible base URL (for example `https://api.openai.com/v1`, `https://api.deepseek.com/v1`, or a local Ollama endpoint), your API key, and a model name.
-3. Click **Test connection**.
+2. Fill base URL, API key, model. Click **Test connection**.
+3. Open a note. Heuristic highlights appear immediately; API highlights refine within seconds.
 
-Without an API the plugin still works: a built-in heuristic classifier (Chinese and English cue words, section context) colors what it can recognize. Heuristic-colored blocks carry a dashed left border, so you can see which colors are provisional. The command **Reclassify current note now** re-runs the API classifier on demand and upgrades provisional colors.
-
-Privacy: classifying a note sends its block text to the endpoint you configured. Nothing else is sent, and nothing is written back into your notes.
+Privacy: annotation sends block text to the endpoint you configured. Nothing else is sent, and nothing is written back into your notes.
 
 ## How it behaves
 
-- Opening a note colors it instantly from the heuristic pass and the cache; an API pass refines it seconds later if needed.
-- Classifications are stored per block, keyed by a hash of the block's normalized source text, in the plugin's own `cache.json` (capped at 5000 blocks). Unchanged content is never re-classified, identical blocks are shared across notes, and edits only re-classify what changed.
-- Editing a note retriggers classification after a 1.5s debounce. A failed API call keeps the heuristic colors and backs off for 60s.
-- Notes larger than 16,000 characters are classified in block-boundary chunks.
-- Both reading view and live preview are decorated; source mode and the file on disk stay untouched.
+- Annotations are stored per block, keyed by a hash of the block's normalized source text (`cache.json`, 5000-block LRU). Unchanged blocks are never re-annotated; edits re-annotate only what changed.
+- Quotes are anchored by significant-character matching (NFKC, case-folded, whitespace and markdown noise stripped), so a highlight survives bold markers, link syntax, and re-wrapping.
+- Editing retriggers annotation after a 1.5s debounce. A failed API call keeps heuristic highlights and backs off 60s.
+- The command **Reclassify current note now** re-runs the API pass on demand.
+- Notes larger than 16,000 characters are annotated in block-boundary chunks.
 
 ## Development
 
 ```
 bun install
-bun test          # unit + mock-server e2e + palette regression
-npm run build     # esbuild bundle to main.js
+bun test                                  # 45 tests: anchoring, parse, store, pipeline, mock-server e2e, palette
+npm run build                             # esbuild bundle to main.js
 npm run build -- --production
+bun scripts/fetch-gl-spans.ts             # real GLM annotations for docs/sample-note.md into /tmp
 ```
 
-Design rationale, the two architecture candidates considered, and the palette measurements live in `docs/design.md`.
+Design rationale (v1 block roles and the v2 inline-span redesign) lives in `docs/design.md`.

@@ -1,11 +1,11 @@
 import { BlockHash } from "./blocks";
-import { parseRole, Role } from "./roles";
+import { Span, parseSpanRole } from "./spans";
 
 export type AnnotationSource = { source: "api"; model: string } | { source: "heuristic" };
 
 export interface AnnotationRecord {
   readonly hash: BlockHash;
-  readonly role: Role;
+  readonly spans: readonly Span[];
   readonly meta: AnnotationSource;
   readonly at: number;
 }
@@ -33,14 +33,31 @@ export interface StoreDeps {
 
 const HASH_RE = /^[0-9a-f]{16}$/;
 
+function parseSpans(raw: unknown): Span[] | null {
+  if (!Array.isArray(raw)) return null;
+  const spans: Span[] = [];
+  for (const s of raw) {
+    if (typeof s !== "object" || s === null) continue;
+    if (!("quote" in s) || !("role" in s)) continue;
+    const quote = typeof s.quote === "string" ? s.quote : "";
+    const role = parseSpanRole(s.role);
+    if (quote === "" || role === null) continue;
+    spans.push({ quote, role });
+  }
+  return spans;
+}
+
 export function parseStoreFile(raw: unknown): readonly AnnotationRecord[] {
-  if (typeof raw !== "object" || raw === null || !("entries" in raw) || !Array.isArray(raw.entries)) return [];
+  if (typeof raw !== "object" || raw === null) return [];
+  if (!("version" in raw) || !("entries" in raw)) return [];
+  if (raw.version !== 2 || !Array.isArray(raw.entries)) return [];
   const records: AnnotationRecord[] = [];
   for (const e of raw.entries) {
     if (typeof e !== "object" || e === null) continue;
-    if (!("hash" in e) || !("role" in e) || !("at" in e) || !("meta" in e)) continue;
-    const role = parseRole(e.role);
-    if (typeof e.hash !== "string" || !HASH_RE.test(e.hash) || role === null || typeof e.at !== "number") continue;
+    if (!("hash" in e) || !("spans" in e) || !("at" in e) || !("meta" in e)) continue;
+    if (typeof e.hash !== "string" || !HASH_RE.test(e.hash) || typeof e.at !== "number") continue;
+    const spans = parseSpans(e.spans);
+    if (spans === null || spans.length === 0) continue;
     let meta: AnnotationSource | null = null;
     if (typeof e.meta === "object" && e.meta !== null && "source" in e.meta) {
       const m = e.meta;
@@ -48,7 +65,7 @@ export function parseStoreFile(raw: unknown): readonly AnnotationRecord[] {
       else if (m.source === "api" && "model" in m && typeof m.model === "string") meta = { source: "api", model: m.model };
     }
     if (meta === null) continue;
-    records.push({ hash: e.hash as BlockHash, role, meta, at: e.at });
+    records.push({ hash: e.hash as BlockHash, spans, meta, at: e.at });
   }
   return records;
 }
@@ -56,7 +73,12 @@ export function parseStoreFile(raw: unknown): readonly AnnotationRecord[] {
 export function createAnnotationStore(deps: StoreDeps, initial: readonly AnnotationRecord[] = []): AnnotationStore {
   const capacity = Math.max(1, deps.capacity);
   const now = deps.now ?? (() => Date.now());
-  const schedule = deps.schedule ?? ((fn: () => void, ms: number) => { const t = setTimeout(fn, ms); return () => clearTimeout(t); });
+  const schedule =
+    deps.schedule ??
+    ((fn: () => void, ms: number) => {
+      const t = setTimeout(fn, ms);
+      return () => clearTimeout(t);
+    });
   const map = new Map<string, AnnotationRecord>();
   const listeners = new Set<StoreListener>();
   let lastAt = 0;

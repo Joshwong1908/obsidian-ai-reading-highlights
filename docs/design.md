@@ -74,3 +74,14 @@ Base is candidate A's lifecycle (open/debounce/manual triggers, heuristic-first,
 ## Next implementation step
 
 `blocks.ts` + `roles.ts` + `heuristic.ts` with unit tests against `docs/sample-note.md`, since every other module consumes `BlockRef`.
+
+## v2 addendum: inline spans replace block tints (2026-10-13)
+
+User verdict on v1: a few large color blocks do not aid reading; the ask is sentence-, keyword-, and concept-level highlighting after real semantic understanding. Redesign as if spans had been the day-one requirement.
+
+- Annotation payload is now `{ quote, role }[]` per block, roles `kp | term | concept`. Anchoring is quote-plus-significant-character matching (NFKC, casefold, whitespace and `*_~[]()#>|` stripped) applied identically to source text, DOM text, and CM6 lines. Source-offset anchoring was rejected again: positions break on any edit above them.
+- Reading view wraps located ranges in `mark.sr-*` by walking text nodes and splitting boundaries; live preview maps the same located ranges to `Decoration.mark`. Overlaps are trimmed by priority (kp > term > concept) at anchor time.
+- Block-tint mode, the five block roles, palette presets, intensity, and grammar settings were deleted rather than kept behind a flag. The cache format moved to version 2; version-1 caches are ignored so notes re-annotate once.
+- The offline heuristic now extracts bold runs as kp and quoted runs as terms, which fits how these notes already encode emphasis.
+
+Verification additions: spans anchoring unit tests; mock-server e2e asserting span parsing; browser harness rendering the sample note with real GLM annotations (65/65 spans rendered, 23 inside list items, zero nested or empty marks, 44/44 sections paired).

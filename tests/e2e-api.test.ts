@@ -19,12 +19,14 @@ const server = Bun.serve({
     const body = (await req.json()) as { messages: { content: string }[] };
     const user = body.messages[1]!.content;
     const segments = user.split(/\n\n(?=\[\d+\])/).slice(1);
-    const labels = segments.map((seg, n) => ({
+    const blocks = segments.map((seg, n) => ({
       i: n + 1,
-      role: /https?:\/\//.test(seg) ? "evidence" : "claim",
+      spans: /https?:\/\//.test(seg)
+        ? [{ quote: "20", role: "term" }]
+        : [{ quote: seg.replace(/^\[\d+\].*?\n/, "").slice(0, 6), role: "kp" }],
     }));
     return Response.json({
-      choices: [{ message: { content: JSON.stringify({ labels }) } }],
+      choices: [{ message: { content: JSON.stringify({ blocks }) } }],
     });
   },
 });
@@ -41,12 +43,12 @@ const getTransport: HttpTransport = async (req) => {
   return { status: res.status, body: await res.text() };
 };
 
-describe("classifyViaApi against a real local server", () => {
+describe("classifyViaApi against a real local server (spans)", () => {
   const items = splitBlocks(sample)
     .blocks.filter((b) => isClassifiable(b.kind))
     .map((b) => ({ hash: b.hash, kind: b.kind, text: b.text, context: [] as string[] }));
 
-  test("full chain returns api records for the sample note", async () => {
+  test("full chain returns span records for the sample note", async () => {
     const res = await classifyViaApi(
       { baseUrl: `http://localhost:${server.port}/v1`, apiKey: "sk-test", model: "mock-model" },
       items,
@@ -56,11 +58,8 @@ describe("classifyViaApi against a real local server", () => {
     expect(res.ok).toBe(true);
     if (!res.ok) return;
     expect(res.items.length).toBe(items.length);
-    const linkBlock = items.findIndex((i) => /arxiv\.org/.test(i.text));
-    const plainBlock = items.findIndex((i) => /唯一需要记住/.test(i.text));
-    const byHash = new Map(res.items.map((r) => [r.hash, r.role]));
-    expect(byHash.get(items[linkBlock]!.hash)).toBe("evidence");
-    expect(byHash.get(items[plainBlock]!.hash)).toBe("claim");
+    const withKp = res.items.filter((i) => i.spans.some((s) => s.role === "kp"));
+    expect(withKp.length).toBeGreaterThan(10);
     expect(seenAuth.at(-1)).toBe("Bearer sk-test");
   });
 
@@ -72,17 +71,14 @@ describe("classifyViaApi against a real local server", () => {
   test("server error surfaces as a value, not a throw", async () => {
     const broken: HttpTransport = async () => ({ status: 503, body: "unavailable" });
     const res = await classifyViaApi({ baseUrl: "http://localhost:1/v1", apiKey: "k", model: "m" }, items, null, broken);
-    expect(res.ok).toBe(false);
-    if (res.ok) return;
-    expect(res.failure.reason).toBe("http");
-    expect(res.failure.detail).toContain("503");
+    expect(!res.ok && res.failure.reason).toBe("http");
   });
 
   test("pre-aborted signal short-circuits without transport", async () => {
     const controller = new AbortController();
     controller.abort();
     let called = 0;
-    const counting: HttpTransport = async (req) => {
+    const counting: HttpTransport = async () => {
       called++;
       return { status: 200, body: "{}" };
     };

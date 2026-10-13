@@ -4,10 +4,10 @@ import { createAnnotationStore, AnnotationStore, parseStoreFile } from "./store"
 import { createPipeline, Pipeline, PipelineSettings } from "./pipeline";
 import { createReadingViewDecorator } from "./reading-view";
 import { buildLivePreviewExtension, repaintLivePreviews } from "./live-preview";
-import { SemanticReadingSettingTab, Settings, applyAppearance, apiConfigOf, parseSettings, serializeSettings } from "./settings";
+import { SemanticReadingSettingTab, Settings, apiConfigOf, parseSettings, serializeSettings } from "./settings";
 import { obsidianTransport } from "./transport";
 import { HttpTransport } from "./api";
-import { Role } from "./roles";
+import { SpanRole } from "./spans";
 
 const CACHE_FILE = "cache.json";
 const CACHE_CAPACITY = 5000;
@@ -40,19 +40,19 @@ export default class SemanticReadingPlugin extends Plugin {
       schedule: scheduleViaTimeout,
     });
 
-    const enabledRoles = (): ReadonlySet<Role> => (this.cfg.enabled ? this.cfg.roles : new Set<Role>());
+    const enabledSpans = (): ReadonlySet<SpanRole> => (this.cfg.enabled ? this.cfg.highlights : new Set<SpanRole>());
 
     this.registerMarkdownPostProcessor(
       createReadingViewDecorator({
         store: this.store,
-        enabledRoles,
+        enabledSpans,
         onStoreChange: (listener) => this.store.onUpdate(() => listener()),
       }),
     );
     this.registerEditorExtension(
       buildLivePreviewExtension({
         store: this.store,
-        enabledRoles,
+        enabledSpans,
         onDocChanged: () => {
           const file = this.activeNoteFile();
           if (file !== null) this.pipeline.fileEdited(file.path);
@@ -79,7 +79,6 @@ export default class SemanticReadingPlugin extends Plugin {
     });
 
     this.addSettingTab(new SemanticReadingSettingTab(this.app, this));
-    applyAppearance(this.cfg);
   }
 
   public override onunload(): void {

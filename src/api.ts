@@ -1,5 +1,5 @@
 import { BlockHash, BlockKind } from "./blocks";
-import { parseRole, Role } from "./roles";
+import { Span, parseSpanRole } from "./spans";
 
 export interface ApiConfig {
   baseUrl: string;
@@ -18,7 +18,7 @@ export interface ClassifyItem {
 export type ClassifyFailure = { reason: "http" | "parse" | "aborted"; detail?: string };
 
 export type ClassifyResult =
-  | { ok: true; items: readonly { hash: BlockHash; role: Role }[] }
+  | { ok: true; items: readonly { hash: BlockHash; spans: readonly Span[] }[] }
   | { ok: false; failure: ClassifyFailure };
 
 export interface HttpRequest {
@@ -30,13 +30,18 @@ export interface HttpRequest {
 export type HttpTransport = (req: HttpRequest) => Promise<{ status: number; body: string }>;
 
 const ITEM_CHAR_LIMIT = 4000;
+const QUOTE_CHAR_LIMIT = 300;
+const PER_BLOCK_CAP = 8;
 
 const SYSTEM_PROMPT = [
-  "You label note blocks with one semantic role to help a reader scan dense notes.",
-  "Roles: claim = the conclusion or judgment the note argues for; evidence = sourced findings, experiments, numbers with provenance;",
-  "caveat = boundary conditions, limitations, failure modes; question = an open question or thing to verify; definition = defines a term or mental model.",
-  "Judge the DOMINANT role of each block. When no role fits, omit the block.",
-  "Answer with a JSON array only, no prose: [{\"i\": <block number>, \"role\": \"claim|evidence|caveat|question|definition\"}]",
+  "You annotate note blocks so a reader can scan what matters.",
+  "For each block, copy VERBATIM substrings of the block text and tag them:",
+  "kp = the one or two sentences that carry the block's point (the claim, judgment, or takeaway);",
+  "term = domain keywords worth remembering, short phrases only;",
+  "concept = named concepts, models, methods, or laws.",
+  "Rules: quotes must be copied exactly from the block, 300 chars max each, at most 8 spans per block,",
+  "kp only when the block truly has one, terms and concepts only when central to the note's topic.",
+  "Answer with JSON only: {\"blocks\": [{\"i\": <block number>, \"spans\": [{\"quote\": \"...\", \"role\": \"kp|term|concept\"}]}]}",
 ].join("\n");
 
 export function buildClassifyBody(api: ApiConfig, items: readonly ClassifyItem[]): string {
@@ -51,7 +56,7 @@ export function buildClassifyBody(api: ApiConfig, items: readonly ClassifyItem[]
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: `Label each block. Blocks:\n\n${parts.join("\n\n")}\n\nAnswer: {"labels": [{"i": 1, "role": "..."}]}` },
+      { role: "user", content: `Annotate each block. Blocks:\n\n${parts.join("\n\n")}\n\nAnswer: {"blocks": [...]}` },
     ],
   };
   if (api.disableThinking === true) body.thinking = { type: "disabled" };
@@ -68,18 +73,26 @@ export function parseClassifyResponse(raw: unknown, items: readonly ClassifyItem
   } catch (e) {
     return { ok: false, failure: { reason: "parse", detail: String(e) } };
   }
-  const labels = extractLabels(parsed);
-  if (labels === null) return { ok: false, failure: { reason: "parse", detail: "no labels array" } };
-  const out: { hash: BlockHash; role: Role }[] = [];
-  for (const label of labels) {
-    if (typeof label !== "object" || label === null) continue;
-    if (!("i" in label) || !("role" in label)) continue;
-    const i = label.i;
-    const role = parseRole(label.role);
-    if (typeof i !== "number" || !Number.isInteger(i) || role === null) continue;
-    const item = items[i - 1];
+  const blocks = extractBlocks(parsed);
+  if (blocks === null) return { ok: false, failure: { reason: "parse", detail: "no blocks array" } };
+  const out: { hash: BlockHash; spans: Span[] }[] = [];
+  for (const entry of blocks) {
+    if (typeof entry !== "object" || entry === null) continue;
+    if (!("i" in entry) || typeof entry.i !== "number" || !Number.isInteger(entry.i)) continue;
+    if (!("spans" in entry) || !Array.isArray(entry.spans)) continue;
+    const item = items[entry.i - 1];
     if (item === undefined) continue;
-    out.push({ hash: item.hash, role });
+    const spans: Span[] = [];
+    for (const s of entry.spans) {
+      if (typeof s !== "object" || s === null) continue;
+      if (!("quote" in s) || !("role" in s)) continue;
+      const quote = typeof s.quote === "string" ? s.quote.trim().slice(0, QUOTE_CHAR_LIMIT) : "";
+      const role = parseSpanRole(s.role);
+      if (quote === "" || role === null) continue;
+      spans.push({ quote, role });
+    }
+    if (spans.length > PER_BLOCK_CAP) spans.length = PER_BLOCK_CAP;
+    if (spans.length > 0) out.push({ hash: item.hash, spans });
   }
   return { ok: true, items: out };
 }
@@ -106,10 +119,10 @@ function stripFences(text: string): string {
   return t;
 }
 
-function extractLabels(parsed: unknown): unknown[] | null {
+function extractBlocks(parsed: unknown): unknown[] | null {
   if (Array.isArray(parsed)) return parsed;
-  if (typeof parsed === "object" && parsed !== null && "labels" in parsed && Array.isArray(parsed.labels)) {
-    return parsed.labels;
+  if (typeof parsed === "object" && parsed !== null && "blocks" in parsed && Array.isArray(parsed.blocks)) {
+    return parsed.blocks;
   }
   return null;
 }

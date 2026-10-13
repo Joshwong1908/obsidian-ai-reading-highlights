@@ -1,5 +1,5 @@
 import { BlockHash, BlockRef, isClassifiable, splitBlocks } from "./blocks";
-import { heuristicClassify } from "./heuristic";
+import { heuristicSpans } from "./heuristic";
 import { ApiConfig, ClassifyItem, HttpTransport, classifyViaApi } from "./api";
 import { AnnotationStore, StorableRecord } from "./store";
 
@@ -100,9 +100,9 @@ export function createPipeline(deps: PipelineDeps): Pipeline {
     }
 
     const missHashes = new Set<BlockHash>(stale.map((i) => i.hash));
-    const guesses = heuristicClassify(index.blocks).filter((g) => missHashes.has(g.hash));
+    const guesses = heuristicSpans(index.blocks).filter((g) => missHashes.has(g.hash));
     if (guesses.length > 0) {
-      deps.store.put(guesses.map((g) => ({ hash: g.hash, role: g.role, meta: { source: "heuristic" as const } })));
+      deps.store.put(guesses.map((g) => ({ hash: g.hash, spans: g.spans, meta: { source: "heuristic" as const } })));
     }
 
     const api = deps.settings().api;
@@ -121,7 +121,7 @@ export function createPipeline(deps: PipelineDeps): Pipeline {
       if (res.ok) {
         const records: StorableRecord[] = res.items.map((i) => ({
           hash: i.hash,
-          role: i.role,
+          spans: i.spans,
           meta: { source: "api" as const, model: api.model },
         }));
         if (records.length > 0) deps.store.put(records);
