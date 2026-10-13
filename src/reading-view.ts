@@ -1,4 +1,4 @@
-import { MarkdownPostProcessor, MarkdownPostProcessorContext } from "obsidian";
+import type { MarkdownPostProcessor, MarkdownPostProcessorContext } from "obsidian";
 import { BlockHash, isClassifiable, splitBlocks } from "./blocks";
 import { Role, ROLE_CLASS } from "./roles";
 import { AnnotationStore } from "./store";

@@ -5,6 +5,5 @@
   "minAppVersion": "1.5.0",
   "description": "Colors notes by semantic role at render time: conclusions, evidence, caveats, questions, definitions. Never modifies note content.",
   "author": "josh",
-  "authorUrl": "https://github.com/josh",
   "isDesktopOnly": false
 }
