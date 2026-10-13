@@ -145,7 +145,8 @@ export default class SemanticReadingPlugin extends Plugin {
       `store: ${this.store.size()} records`,
       `noteSpans cached paths: ${[...this.noteSpans.keys()].join(", ") || "none"}`,
       `render stats: ${JSON.stringify(s)}`,
-      `live dom: cm-content marks ${document.querySelectorAll(".cm-content .sr-kp, .cm-content .sr-term, .cm-content .sr-concept").length}, all document marks ${document.querySelectorAll("mark.sr, .sr-kp, .sr-term, .sr-concept").length}`,
+      `live dom: cm-content marks ${document.querySelectorAll(".cm-content .sr-kp, .cm-content .sr-term, .cm-content .sr-concept").length}, all marks ${document.querySelectorAll(".sr").length}`,
+      `computed: kpBg=${(() => { const el = document.querySelector(".cm-content .sr-kp"); return el ? getComputedStyle(el).backgroundImage.slice(0, 40) : "no-element"; })()} termDeco=${(() => { const el = document.querySelector(".cm-content .sr-term"); return el ? getComputedStyle(el).textDecorationLine : "no-element"; })()}`,
       `active file: ${this.activeNoteFile()?.path ?? "none"}`,
       `version: ${this.manifest.version}`,
     ];
