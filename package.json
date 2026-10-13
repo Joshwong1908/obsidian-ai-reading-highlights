@@ -1,0 +1,17 @@
+{
+  "name": "semantic-reading",
+  "version": "0.1.0",
+  "description": "Render-time semantic role highlighting for Obsidian reading. Never modifies notes.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "obsidian": "^1.7.2",
+    "typescript": "^5.6.0"
+  }
+}

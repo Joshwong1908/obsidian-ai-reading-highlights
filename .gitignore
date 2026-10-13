@@ -1,0 +1,5 @@
+node_modules/
+main.js
+*.map
+cache.json
+.DS_Store

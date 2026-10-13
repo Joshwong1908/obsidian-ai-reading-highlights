@@ -1,0 +1,69 @@
+/* Semantic Reading: render-time role decoration.
+   Roles carry one hue each; hue stays constant across themes, only alpha changes.
+   Palette separation is guarded by tests/palette.test.ts (OKLab dE >= 0.1 between roles). */
+
+body {
+  --sr-claim: #6366f1;
+  --sr-evidence: #14b8a6;
+  --sr-caveat: #d97706;
+  --sr-question: #0ea5e9;
+  --sr-definition: #8b5cf6;
+  --sr-tint-alpha: 13%;
+  --sr-border-alpha: 55%;
+  --sr-border-width: 3px;
+  --sr-inset: 12px;
+}
+
+body[data-sr-preset="warm"] {
+  --sr-claim: #b91c1c;
+  --sr-evidence: #5d8c34;
+  --sr-caveat: #a16207;
+  --sr-question: #3b6ea5;
+  --sr-definition: #8e4b8e;
+}
+
+body.theme-dark {
+  --sr-tint-alpha: 17%;
+  --sr-border-alpha: 72%;
+}
+
+body[data-sr-intensity="subtle"] {
+  --sr-tint-alpha: 7%;
+}
+
+.sr-claim { --sr-role: var(--sr-claim); }
+.sr-evidence { --sr-role: var(--sr-evidence); }
+.sr-caveat { --sr-role: var(--sr-caveat); }
+.sr-question { --sr-role: var(--sr-question); }
+.sr-definition { --sr-role: var(--sr-definition); }
+
+.sr {
+  --sr-tint: color-mix(in srgb, var(--sr-role) var(--sr-tint-alpha), transparent);
+  --sr-border: color-mix(in srgb, var(--sr-role) var(--sr-border-alpha), transparent);
+  background: var(--sr-tint);
+  border-left: var(--sr-border-width) solid var(--sr-border);
+  border-radius: 4px;
+  padding-left: var(--sr-inset);
+  margin-left: calc(-1 * var(--sr-inset));
+  padding-right: 6px;
+}
+
+body[data-sr-grammar="tint"] .sr {
+  border-left: none;
+  padding-left: 6px;
+  margin-left: 0;
+}
+
+body[data-sr-grammar="border"] .sr {
+  background: transparent;
+  padding-right: 0;
+}
+
+.markdown-rendered.sr-pending > * {
+  transition: none;
+}
+
+.sr-status {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
