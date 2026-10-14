@@ -26,8 +26,6 @@ body[data-sr-bg="dark"] {
 .sr {
   color: inherit;
   background: transparent;
-  position: relative;
-  cursor: help;
 }
 
 .sr-kp {
@@ -102,24 +100,6 @@ body:not([data-sr-style="pill"]) .sr-concept {
 body[data-sr-bg="dark"]:not([data-sr-style="pill"]) .sr-concept {
   text-decoration-color: rgba(45, 212, 191, 0.85);
   text-decoration-color: color-mix(in srgb, var(--sr-concept) var(--sr-concept-alpha), transparent);
-}
-
-.sr[data-sr-label]:hover::after {
-  content: attr(data-sr-label);
-  position: absolute;
-  bottom: calc(100% + 3px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--background-modifier-hover, rgba(128, 128, 128, 0.2));
-  color: var(--text-normal, inherit);
-  font-size: 0.72em;
-  line-height: 1;
-  padding: 4px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--background-modifier-border, rgba(128, 128, 128, 0.4));
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 50;
 }
 
 .sr-status {

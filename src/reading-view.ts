@@ -1,7 +1,7 @@
 import type { MarkdownPostProcessor, MarkdownPostProcessorContext } from "obsidian";
 import { stats } from "./stats";
+import { sigMap, dedupe, Loc, SPAN_CLASS, Span, SpanRole } from "./spans";
 import { BlockHash, isClassifiable, splitBlocks } from "./blocks";
-import { sigMap, dedupe, Loc, SPAN_CLASS, SPAN_LABEL, Span, SpanRole } from "./spans";
 import { AnnotationStore } from "./store";
 
 export interface ReadingViewDeps {
@@ -96,7 +96,6 @@ function wrapPiece(piece: Piece): void {
   const target = piece.from > 0 ? node.splitText(piece.from) : node;
   const mark = createEl("mark");
   mark.className = `sr ${SPAN_CLASS[piece.role]}`;
-  mark.dataset.srLabel = SPAN_LABEL[piece.role];
   const parent = target.parentNode;
   if (parent === null) return;
   parent.insertBefore(mark, target);

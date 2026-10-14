@@ -1,7 +1,7 @@
 {
   "id": "ai-reading-highlights",
   "name": "AI Reading Highlights",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "minAppVersion": "1.5.0",
   "description": "Automatically highlights key sentences, terms, and concepts in your notes using an LLM you configure. Works in reading view and live preview, and never modifies note files.",
   "author": "Joshwong1908",

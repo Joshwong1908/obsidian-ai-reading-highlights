@@ -2,7 +2,7 @@ import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate } from "@
 import { stats } from "./stats";
 import { StateEffect, StateEffectType, Extension, RangeSetBuilder } from "@codemirror/state";
 import { BlockRef, isClassifiable, splitBlocks } from "./blocks";
-import { locateSpans, SPAN_CLASS, SPAN_LABEL, SpanRole } from "./spans";
+import { locateSpans, SPAN_CLASS, SpanRole } from "./spans";
 import { AnnotationStore } from "./store";
 
 export interface LivePreviewDeps {
@@ -44,7 +44,7 @@ function buildDecorations(view: EditorView, store: AnnotationStore, enabled: Rea
       const from = Math.min(base + loc.from, doc.length);
       const to = Math.min(base + loc.to, doc.length);
       if (to <= from) continue;
-      marks.push({ from, to, deco: Decoration.mark({ class: `sr ${SPAN_CLASS[loc.role]}`, attributes: { "data-sr-label": SPAN_LABEL[loc.role] } }) });
+      marks.push({ from, to, deco: Decoration.mark({ class: `sr ${SPAN_CLASS[loc.role]}` }) });
     }
   }
   stats.liveMarksBuilt = marks.length;
