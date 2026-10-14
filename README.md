@@ -4,9 +4,9 @@ Semantic Reading marks what matters inside your notes. A language model you conf
 
 It is built for dense technical notes in Chinese and English, the kind you scan for what the author concluded, what supports it, and which concepts carry the argument.
 
-<!-- Screenshot placeholder: drop your image at docs/probe-shots/screenshot.png and uncomment:
-![Highlights in a real note](docs/probe-shots/screenshot.png)
--->
+![Highlights in a light theme](docs/probe-shots/screenshot.png)
+
+More views: [another note](docs/probe-shots/highlights-2.png), [dark theme, reading](docs/probe-shots/highlights-3.png), and [dark theme, dense highlights](docs/probe-shots/dark.png).
 
 ## What gets highlighted
 
