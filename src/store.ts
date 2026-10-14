@@ -1,5 +1,6 @@
-import { BlockHash } from "./blocks";
+import { isRecord } from "./guard";
 import { Span, parseSpanRole } from "./spans";
+import { BlockHash } from "./blocks";
 
 export type AnnotationSource = { source: "api"; model: string } | { source: "heuristic" };
 
@@ -37,8 +38,7 @@ function parseSpans(raw: unknown): Span[] | null {
   if (!Array.isArray(raw)) return null;
   const spans: Span[] = [];
   for (const s of raw) {
-    if (typeof s !== "object" || s === null) continue;
-    if (!("quote" in s) || !("role" in s)) continue;
+    if (!isRecord(s)) continue;
     const quote = typeof s.quote === "string" ? s.quote : "";
     const role = parseSpanRole(s.role);
     if (quote === "" || role === null) continue;
@@ -48,21 +48,18 @@ function parseSpans(raw: unknown): Span[] | null {
 }
 
 export function parseStoreFile(raw: unknown): readonly AnnotationRecord[] {
-  if (typeof raw !== "object" || raw === null) return [];
-  if (!("version" in raw) || !("entries" in raw)) return [];
+  if (!isRecord(raw)) return [];
   if ((raw.version !== 1 && raw.version !== 2) || !Array.isArray(raw.entries)) return [];
   const records: AnnotationRecord[] = [];
   for (const e of raw.entries) {
-    if (typeof e !== "object" || e === null) continue;
-    if (!("hash" in e) || !("spans" in e) || !("at" in e) || !("meta" in e)) continue;
+    if (!isRecord(e)) continue;
     if (typeof e.hash !== "string" || !HASH_RE.test(e.hash) || typeof e.at !== "number") continue;
     const spans = parseSpans(e.spans);
     if (spans === null || spans.length === 0) continue;
     let meta: AnnotationSource | null = null;
-    if (typeof e.meta === "object" && e.meta !== null && "source" in e.meta) {
-      const m = e.meta;
-      if (m.source === "heuristic") meta = { source: "heuristic" };
-      else if (m.source === "api" && "model" in m && typeof m.model === "string") meta = { source: "api", model: m.model };
+    if (isRecord(e.meta)) {
+      if (e.meta.source === "heuristic") meta = { source: "heuristic" };
+      else if (e.meta.source === "api" && typeof e.meta.model === "string") meta = { source: "api", model: e.meta.model };
     }
     if (meta === null) continue;
     records.push({ hash: e.hash as BlockHash, spans, meta, at: e.at });
@@ -76,8 +73,8 @@ export function createAnnotationStore(deps: StoreDeps, initial: readonly Annotat
   const schedule =
     deps.schedule ??
     ((fn: () => void, ms: number) => {
-      const t = setTimeout(fn, ms);
-      return () => clearTimeout(t);
+      const t = window.setTimeout(fn, ms);
+      return () => window.clearTimeout(t);
     });
   const map = new Map<string, AnnotationRecord>();
   const listeners = new Set<StoreListener>();

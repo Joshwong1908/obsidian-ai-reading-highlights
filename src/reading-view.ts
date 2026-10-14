@@ -94,7 +94,7 @@ function wrapPiece(piece: Piece): void {
   const node = piece.node;
   if (piece.to < node.data.length) node.splitText(piece.to);
   const target = piece.from > 0 ? node.splitText(piece.from) : node;
-  const mark = document.createElement("mark");
+  const mark = createEl("mark");
   mark.className = `sr ${SPAN_CLASS[piece.role]}`;
   mark.dataset.srLabel = SPAN_LABEL[piece.role];
   const parent = target.parentNode;

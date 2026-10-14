@@ -1,6 +1,6 @@
 {
   "name": "ai-reading-highlights",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Automatic LLM-driven reading highlights for Obsidian. Never modifies notes.",
   "private": true,
   "type": "module",

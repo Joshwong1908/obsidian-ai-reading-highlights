@@ -1,3 +1,4 @@
+import { isRecord } from "./guard";
 import { BlockHash, BlockKind } from "./blocks";
 import { Span, parseSpanRole } from "./spans";
 
@@ -77,15 +78,15 @@ export function parseClassifyResponse(raw: unknown, items: readonly ClassifyItem
   if (blocks === null) return { ok: false, failure: { reason: "parse", detail: "no blocks array" } };
   const out: { hash: BlockHash; spans: Span[] }[] = [];
   for (const entry of blocks) {
-    if (typeof entry !== "object" || entry === null) continue;
-    if (!("i" in entry) || typeof entry.i !== "number" || !Number.isInteger(entry.i)) continue;
-    if (!("spans" in entry) || !Array.isArray(entry.spans)) continue;
-    const item = items[entry.i - 1];
+    if (!isRecord(entry)) continue;
+    const i = entry.i;
+    if (typeof i !== "number" || !Number.isInteger(i)) continue;
+    if (!Array.isArray(entry.spans)) continue;
+    const item = items[i - 1];
     if (item === undefined) continue;
     const spans: Span[] = [];
     for (const s of entry.spans) {
-      if (typeof s !== "object" || s === null) continue;
-      if (!("quote" in s) || !("role" in s)) continue;
+      if (!isRecord(s)) continue;
       const quote = typeof s.quote === "string" ? s.quote.trim().slice(0, QUOTE_CHAR_LIMIT) : "";
       const role = parseSpanRole(s.role);
       if (quote === "" || role === null) continue;
@@ -99,13 +100,10 @@ export function parseClassifyResponse(raw: unknown, items: readonly ClassifyItem
 
 function extractContent(raw: unknown): string | null {
   if (typeof raw === "string") return raw;
-  if (typeof raw !== "object" || raw === null || !("choices" in raw)) return null;
-  if (!Array.isArray(raw.choices) || raw.choices.length === 0) return null;
+  if (!isRecord(raw) || !Array.isArray(raw.choices) || raw.choices.length === 0) return null;
   const first = raw.choices[0];
-  if (typeof first !== "object" || first === null || !("message" in first)) return null;
-  const message = first.message;
-  if (typeof message !== "object" || message === null || !("content" in message)) return null;
-  const content = message.content;
+  if (!isRecord(first) || !isRecord(first.message)) return null;
+  const content = first.message.content;
   return typeof content === "string" ? content : null;
 }
 

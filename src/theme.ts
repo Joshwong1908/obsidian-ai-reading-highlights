@@ -16,8 +16,8 @@ export function applyThemeAdaptation(): void {
 export function watchThemeAdaptation(): () => void {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const schedule = () => {
-    clearTimeout(timer);
-    timer = setTimeout(() => {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => {
       timer = undefined;
       applyThemeAdaptation();
     }, 200);

@@ -1,4 +1,4 @@
-import { MarkdownView, Notice, normalizePath, Plugin, TFile } from "obsidian";
+import { MarkdownView, Notice, normalizePath, Platform, Plugin, TFile } from "obsidian";
 
 import { createAnnotationStore, AnnotationStore, parseStoreFile } from "./store";
 import { createPipeline, Pipeline, PipelineSettings } from "./pipeline";
@@ -18,8 +18,8 @@ const EDIT_DEBOUNCE_MS = 1500;
 const NOTE_SPANS_CAPACITY = 16;
 
 const scheduleViaTimeout = (fn: () => void, ms: number): (() => void) => {
-  const t = setTimeout(fn, ms);
-  return () => clearTimeout(t);
+  const t = window.setTimeout(fn, ms);
+  return () => window.clearTimeout(t);
 };
 
 export default class SemanticReadingPlugin extends Plugin {
@@ -133,18 +133,15 @@ export default class SemanticReadingPlugin extends Plugin {
 
   private async diagnose(auto = false): Promise<void> {
     const s = renderStats();
-    const ua = navigator.userAgent;
-    const obsidianVersion = /obsidian\/([\d.]+)/i.exec(ua)?.[1] ?? "unknown";
+    const platform = Platform.isDesktopApp ? "desktop" : "mobile";
     const feature = {
       colorMix: CSS.supports("color", "color-mix(in srgb, red 50%, transparent)"),
       treeWalker: typeof document.createTreeWalker === "function",
       splitText: typeof Text.prototype.splitText === "function",
-      dataset: "dataset" in document.createElement("mark"),
+      dataset: "dataset" in createEl("mark"),
     };
-    const styleTag = document.querySelector("style") ?? document.body;
     const lines = [
-      `obsidian: ${obsidianVersion}`,
-      `ua: ${ua}`,
+      `platform: ${platform}`,
       `features: ${JSON.stringify(feature)}`,
       `settings: enabled=${this.cfg.enabled} highlights=[${[...this.cfg.highlights].join(",")}] style=${this.cfg.style} api=${this.cfg.baseUrl !== "" && this.cfg.apiKey !== "" && this.cfg.model !== "" ? "configured" : "missing"}`,
       `store: ${this.store.size()} records`,
@@ -164,7 +161,7 @@ export default class SemanticReadingPlugin extends Plugin {
       if (!auto) {
         new Notice(`AI Reading Highlights diagnosis: liveBuilt=${s.liveMarksBuilt} liveHits=${s.liveStoreHits} cmMarks=${document.querySelectorAll(".cm-content .sr-kp, .cm-content .sr-term, .cm-content .sr-concept").length} readingMarks=${s.marksApplied} store=${this.store.size()}. Full: ${path}`, 12000);
       }
-    } catch (e) {
+    } catch {
       if (!auto) {
         new Notice(`AI Reading Highlights diagnosis (write failed): liveBuilt=${s.liveMarksBuilt} liveHits=${s.liveStoreHits} readingMarks=${s.marksApplied} store=${this.store.size()}.`, 12000);
       }
@@ -173,7 +170,6 @@ export default class SemanticReadingPlugin extends Plugin {
 
   private async loadPluginState(): Promise<void> {
     this.cfg = parseSettings(await this.loadData());
-    const dir = this.manifest.dir ?? "";
     const cachePath = normalizePath(`${this.manifest.dir ?? ""}/${CACHE_FILE}`);
     let cacheJson: unknown = null;
     try {
