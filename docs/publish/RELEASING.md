@@ -33,3 +33,9 @@ After publication, announce in the forum's Share & showcase category and in the 
 - Sentence case in every UI string.
 - Event listeners through `registerEvent`, unsubscribes in `onunload`.
 - No innerHTML from variable content, no default hotkeys, no global `app`, no regex lookbehind (mobile).
+
+## Directory review: standing dismissals (recorded 2026-10-14, v1.0.1)
+
+- Duplicate `background` / `text-decoration-color` in styles.css: intentional rgba fallbacks that precede their color-mix counterparts for older rendering engines. Do not deduplicate.
+- `getSettingDefinitions()` declarative settings API: not adopted yet; settings search on 1.13+ will not index this tab. Candidate follow-up, not a review blocker.
+- GitHub artifact attestations for release assets: requires a CI workflow with actions/attest-build-provenance. Candidate follow-up.
