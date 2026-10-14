@@ -24,11 +24,11 @@ Two engines produce the highlights:
 
 ## Network use
 
-Classification sends the text blocks of the note you open to the OpenAI-compatible endpoint you configure, and to nothing and no one else. This is the plugin's only network access. The API engine requires an account with your chosen provider, and some providers charge for usage. Results are stored in the plugin's own cache file inside `.obsidian/plugins/semantic-reading/`. Note content on disk is never modified. The offline heuristic works without an account.
+Classification sends the text blocks of the note you open to the OpenAI-compatible endpoint you configure, and to nothing and no one else. This is the plugin's only network access. The API engine requires an account with your chosen provider, and some providers charge for usage. Results are stored in the plugin's own cache file inside `.obsidian/plugins/ai-reading-highlights/`. Note content on disk is never modified. The offline heuristic works without an account.
 
 ## Install and configure
 
-1. Install from the community directory, or copy `main.js`, `manifest.json`, and `styles.css` into `<vault>/.obsidian/plugins/semantic-reading/` and enable it in Settings → Community plugins.
+1. Install from the community directory, or copy `main.js`, `manifest.json`, and `styles.css` into `<vault>/.obsidian/plugins/ai-reading-highlights/` and enable it in Settings → Community plugins.
 2. Settings → AI Reading Highlights → Classification API. Fill in the base URL, API key, and model, then click **Test connection**.
 3. Open a note. Heuristic highlights appear immediately, and API highlights follow within seconds.
 

@@ -2,13 +2,13 @@ import { splitBlocks, isClassifiable } from "../src/blocks";
 import { classifyViaApi } from "../src/api";
 import { readFileSync, writeFileSync } from "node:fs";
 
-const vault = JSON.parse(readFileSync("/mnt/e/01Markdown/.obsidian/plugins/semantic-reading/data.json", "utf8")) as {
+const vault = JSON.parse(readFileSync("/mnt/e/01Markdown/.obsidian/plugins/ai-reading-highlights/data.json", "utf8")) as {
   baseUrl: string;
   apiKey: string;
   model: string;
   disableThinking: boolean;
 };
-const md = readFileSync("/home/josh/Papers/semantic-reading/docs/sample-note.md", "utf8");
+const md = readFileSync("/home/josh/Papers/obsidian-ai-reading-highlights/docs/sample-note.md", "utf8");
 const items = splitBlocks(md)
   .blocks.filter((b) => isClassifiable(b.kind))
   .map((b) => ({ hash: b.hash, kind: b.kind, text: b.text, context: [] as string[] }));

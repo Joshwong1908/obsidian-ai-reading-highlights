@@ -1,7 +1,7 @@
 {
-  "name": "semantic-reading",
+  "name": "ai-reading-highlights",
   "version": "1.0.0",
-  "description": "Render-time semantic role highlighting for Obsidian reading. Never modifies notes.",
+  "description": "Automatic LLM-driven reading highlights for Obsidian. Never modifies notes.",
   "private": true,
   "type": "module",
   "scripts": {
