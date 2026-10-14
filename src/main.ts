@@ -156,17 +156,17 @@ export default class SemanticReadingPlugin extends Plugin {
       `version: ${this.manifest.version}`,
     ];
     const report = lines.join("\n");
-    console.debug("[Semantic Reading] diagnosis\n" + report);
+    console.debug("[AI Reading Highlights] diagnosis\n" + report);
     try {
       const dir = this.manifest.dir ?? "";
       const path = normalizePath(`${dir}/diagnosis.txt`);
       await this.app.vault.adapter.write(path, report + "\n");
       if (!auto) {
-        new Notice(`Semantic Reading diagnosis: liveBuilt=${s.liveMarksBuilt} liveHits=${s.liveStoreHits} cmMarks=${document.querySelectorAll(".cm-content .sr-kp, .cm-content .sr-term, .cm-content .sr-concept").length} readingMarks=${s.marksApplied} store=${this.store.size()}. Full: ${path}`, 12000);
+        new Notice(`AI Reading Highlights diagnosis: liveBuilt=${s.liveMarksBuilt} liveHits=${s.liveStoreHits} cmMarks=${document.querySelectorAll(".cm-content .sr-kp, .cm-content .sr-term, .cm-content .sr-concept").length} readingMarks=${s.marksApplied} store=${this.store.size()}. Full: ${path}`, 12000);
       }
     } catch (e) {
       if (!auto) {
-        new Notice(`Semantic Reading diagnosis (write failed): liveBuilt=${s.liveMarksBuilt} liveHits=${s.liveStoreHits} readingMarks=${s.marksApplied} store=${this.store.size()}.`, 12000);
+        new Notice(`AI Reading Highlights diagnosis (write failed): liveBuilt=${s.liveMarksBuilt} liveHits=${s.liveStoreHits} readingMarks=${s.marksApplied} store=${this.store.size()}.`, 12000);
       }
     }
   }

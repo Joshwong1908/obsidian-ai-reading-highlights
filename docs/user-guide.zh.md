@@ -1,6 +1,6 @@
-# Semantic Reading 使用指南
+# AI Reading Highlights 使用指南
 
-Semantic Reading 用你配置的大模型给笔记做语义高亮:重点句、关键词、概念在渲染层直接标出,笔记文件本身一个字节都不改。
+AI Reading Highlights 用你配置的大模型给笔记做语义高亮:重点句、关键词、概念在渲染层直接标出,笔记文件本身一个字节都不改。
 
 ## 它标什么
 
@@ -14,11 +14,11 @@ Semantic Reading 用你配置的大模型给笔记做语义高亮:重点句、�
 
 ## 安装
 
-社区插件市场搜索 Semantic Reading 安装,或手动把 `main.js`、`manifest.json`、`styles.css` 放进 `<vault>/.obsidian/plugins/semantic-reading/` 后在设置里启用。
+社区插件市场搜索 AI Reading Highlights 安装,或手动把 `main.js`、`manifest.json`、`styles.css` 放进 `<vault>/.obsidian/plugins/ai-reading-highlights/` 后在设置里启用。
 
 ## 配置模型
 
-设置 → Semantic Reading → Classification API,填三项:Base URL、API key、Model,点 Test connection 验证。填好后打开任意笔记,几秒内出现高亮。
+设置 → AI Reading Highlights → Classification API,填三项:Base URL、API key、Model,点 Test connection 验证。填好后打开任意笔记,几秒内出现高亮。
 
 常用端点示例:
 

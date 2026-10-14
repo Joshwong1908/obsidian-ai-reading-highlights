@@ -1,6 +1,6 @@
-# Semantic Reading
+# AI Reading Highlights
 
-Semantic Reading marks what matters inside your notes. A language model you configure reads each block and highlights key sentences, key terms, and named concepts directly in the text, in both reading view and live preview. Note files are never modified.
+AI Reading Highlights marks what matters inside your notes. A language model you configure reads each block and highlights key sentences, key terms, and named concepts directly in the text, in both reading view and live preview. Note files are never modified.
 
 It is built for dense technical notes in Chinese and English, the kind you scan for what the author concluded, what supports it, and which concepts carry the argument.
 
@@ -29,7 +29,7 @@ Classification sends the text blocks of the note you open to the OpenAI-compatib
 ## Install and configure
 
 1. Install from the community directory, or copy `main.js`, `manifest.json`, and `styles.css` into `<vault>/.obsidian/plugins/semantic-reading/` and enable it in Settings → Community plugins.
-2. Settings → Semantic Reading → Classification API. Fill in the base URL, API key, and model, then click **Test connection**.
+2. Settings → AI Reading Highlights → Classification API. Fill in the base URL, API key, and model, then click **Test connection**.
 3. Open a note. Heuristic highlights appear immediately, and API highlights follow within seconds.
 
 

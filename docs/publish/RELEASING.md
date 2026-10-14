@@ -1,4 +1,4 @@
-# Releasing Semantic Reading
+# Releasing AI Reading Highlights
 
 The Obsidian Community directory accepts plugins through community.obsidian.md, not through pull requests to obsidian-releases. This file records the current official flow so the next release repeats it exactly. Sources: the developer docs pages for developer policies, submission requirements, plugin guidelines, and "Submit your plugin", fetched 2026-10-14 into /tmp/obs-docs during release preparation.
 

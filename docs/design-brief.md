@@ -1,4 +1,4 @@
-# Semantic Reading plugin, design brief
+# AI Reading Highlights plugin (formerly Semantic Reading), design brief
 
 ## Product goal
 

@@ -144,7 +144,7 @@ export function createPipeline(deps: PipelineDeps): Pipeline {
         apiCooldownUntil = now() + API_COOLDOWN_MS;
         if (!failureNotified) {
           failureNotified = true;
-          deps.notify(`Semantic Reading: API call failed (${res.failure.detail ?? res.failure.reason}). Offline highlights are still shown.`);
+          deps.notify(`AI Reading Highlights: API call failed (${res.failure.detail ?? res.failure.reason}). Offline highlights are still shown.`);
         }
       }
     }
