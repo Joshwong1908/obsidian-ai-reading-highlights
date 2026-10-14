@@ -29,6 +29,8 @@ Classification sends the text blocks of the note you open to the OpenAI-compatib
 ## Install and configure
 
 1. Install from the community directory, or copy `main.js`, `manifest.json`, and `styles.css` into `<vault>/.obsidian/plugins/ai-reading-highlights/` and enable it in Settings → Community plugins.
+
+If the plugin has not appeared in the in-app community browser yet (the directory and the in-app registry sync on a delay), install it with [BRAT](https://github.com/TfTHacker/obsidian42-brat): add `Joshwong1908/obsidian-ai-reading-highlights` as a beta plugin and BRAT tracks every release.
 2. Settings → AI Reading Highlights → Classification API. Fill in the base URL, API key, and model, then click **Test connection**.
 3. Open a note. Heuristic highlights appear immediately, and API highlights follow within seconds.
 
