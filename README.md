@@ -4,9 +4,9 @@ Semantic Reading marks what matters inside your notes. A language model you conf
 
 It is built for dense technical notes in Chinese and English, the kind you scan for what the author concluded, what supports it, and which concepts carry the argument.
 
-![Highlights in a light theme](docs/probe-shots/screenshot.png)
-
-More views: [another light note](docs/probe-shots/highlights-2.png), [a third note](docs/probe-shots/highlights-3.png), [mixed layout](docs/probe-shots/highlights-4.png), and [the dark theme](docs/probe-shots/dark.png).
+<!-- Screenshot placeholder: drop your image at docs/probe-shots/screenshot.png and uncomment:
+![Highlights in a real note](docs/probe-shots/screenshot.png)
+-->
 
 ## What gets highlighted
 
@@ -32,7 +32,7 @@ Classification sends the text blocks of the note you open to the OpenAI-compatib
 2. Settings → Semantic Reading → Classification API. Fill in the base URL, API key, and model, then click **Test connection**.
 3. Open a note. Heuristic highlights appear immediately, and API highlights follow within seconds.
 
-![Settings](docs/probe-shots/settings.png)
+
 
 
 | Provider | Base URL | Notes |
