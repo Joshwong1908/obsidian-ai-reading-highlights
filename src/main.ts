@@ -79,9 +79,6 @@ export default class SemanticReadingPlugin extends Plugin {
     this.app.workspace.onLayoutReady(() => {
       const file = this.activeNoteFile();
       if (file !== null) this.pipeline.fileOpened(file.path);
-      setTimeout(() => {
-        void this.diagnose(true);
-      }, 6000);
     });
     this.addCommand({
       id: "reclassify-note",
