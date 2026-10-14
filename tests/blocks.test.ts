@@ -19,23 +19,15 @@ describe("splitBlocks on the real sample note", () => {
   });
 
   test("finds the structural shapes the note actually has", () => {
-    expect(kinds("heading").length).toBeGreaterThanOrEqual(10);
-    expect(kinds("table").length).toBe(2);
-    expect(kinds("code").length).toBeGreaterThanOrEqual(1);
-    expect(kinds("listItem").length).toBeGreaterThanOrEqual(15);
-    expect(kinds("paragraph").length).toBeGreaterThanOrEqual(10);
+    expect(kinds("heading").length).toBe(1);
+    expect(kinds("listItem").length).toBe(7);
+    expect(kinds("paragraph").length).toBe(0);
+    expect(kinds("table").length).toBe(0);
   });
 
-  test("captures the nested loop diagram code fence whole", () => {
-    const code = kinds("code").find((b) => b.text.includes("触发层"));
-    expect(code).toBeDefined();
-    expect(code!.text.trim().endsWith("max_turns")).toBe(true);
-  });
-
-  test("keeps table pipes in block text", () => {
-    const table = kinds("table")[0]!;
-    expect(table.text.startsWith("|")).toBe(true);
-    expect(table.text).toContain("| 级别 |");
+  test("keeps list markers in block text", () => {
+    const first = kinds("listItem")[0]!;
+    expect(first.text.startsWith("1. ")).toBe(true);
   });
 
   test("blockAt resolves every block start and misses blank gaps", () => {
@@ -46,16 +38,16 @@ describe("splitBlocks on the real sample note", () => {
 
 describe("identity", () => {
   test("hash is stable under trailing whitespace and NFC recomposition", () => {
-    const base = "因为**没有外部信号**，模型改不好自己。";
-    const padded = "因为**没有外部信号**，模型改不好自己。  ";
+    const base = "State is the source of truth; context is a view.";
+    const padded = "State is the source of truth; context is a view.  ";
     const nfd = base.normalize("NFD");
     expect(hashBlock(normalizeBlock([padded]))).toBe(hashBlock(normalizeBlock([base])));
     expect(hashBlock(normalizeBlock([nfd]))).toBe(hashBlock(normalizeBlock([base])));
   });
 
   test("distinct texts get distinct hashes", () => {
-    const a = hashBlock(normalizeBlock(["结论 A"]));
-    const b = hashBlock(normalizeBlock(["结论 B"]));
+    const a = hashBlock(normalizeBlock(["point A"]));
+    const b = hashBlock(normalizeBlock(["point B"]));
     expect(a).not.toBe(b);
   });
 });
@@ -72,6 +64,20 @@ describe("synthetic documents", () => {
     const doc = "- a\n  - b\n- c\n";
     const items = splitBlocks(doc).blocks.filter((b) => b.kind === "listItem");
     expect(items.map((b) => b.text)).toEqual(["- a", "  - b", "- c"]);
+  });
+
+  test("tables form one whole block with pipes kept", () => {
+    const doc = "| h1 | h2 |\n| --- | --- |\n| a | b |\n";
+    const blocks = splitBlocks(doc).blocks;
+    expect(blocks[0]!.kind).toBe("table");
+    expect(blocks[0]!.text).toContain("| h1 |");
+  });
+
+  test("code fences form one block without the fence lines", () => {
+    const doc = "```text\ninner line\nsecond line\n```\n";
+    const blocks = splitBlocks(doc).blocks;
+    expect(blocks[0]!.kind).toBe("code");
+    expect(blocks[0]!.text).toBe("inner line\nsecond line");
   });
 
   test("loose list with wrapped continuation keeps the wrap inside the item", () => {

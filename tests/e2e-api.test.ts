@@ -59,7 +59,7 @@ describe("classifyViaApi against a real local server (spans)", () => {
     if (!res.ok) return;
     expect(res.items.length).toBe(items.length);
     const withKp = res.items.filter((i) => i.spans.some((s) => s.role === "kp"));
-    expect(withKp.length).toBeGreaterThan(10);
+    expect(withKp.length).toBe(items.length);
     expect(seenAuth.at(-1)).toBe("Bearer sk-test");
   });
 

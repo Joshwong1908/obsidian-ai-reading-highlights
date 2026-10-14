@@ -6,25 +6,24 @@ import { heuristicSpans } from "../src/heuristic";
 
 const sample = readFileSync(join(import.meta.dir, "../docs/sample-note.md"), "utf8");
 
-describe("heuristicSpans", () => {
-  test("extracts bold keypoint spans from the real note", () => {
-    const out = heuristicSpans(splitBlocks(sample).blocks);
-    const kp = out.flatMap((b) => b.spans.filter((s) => s.role === "kp"));
-    expect(kp.length).toBeGreaterThanOrEqual(10);
-    expect(kp.some((s) => s.quote.includes("没有外部信号"))).toBe(true);
+describe("heuristicSpans on the real sample note", () => {
+  test("returns nothing on a note without bold or quoted runs", () => {
+    expect(heuristicSpans(splitBlocks(sample).blocks)).toEqual([]);
   });
+});
 
-  test("extracts quoted terms", () => {
-    const out = heuristicSpans(splitBlocks(sample).blocks);
-    const terms = out.flatMap((b) => b.spans.filter((s) => s.role === "term"));
-    expect(terms.some((s) => s.quote.includes("8 种 loop pattern"))).toBe(true);
-  });
-
-  test("caps bold spans at two per block", () => {
+describe("heuristicSpans on synthetic blocks", () => {
+  test("bold runs become keypoints, capped at two per block", () => {
     const doc = "- **一** and **二** and **三**\n";
     const out = heuristicSpans(splitBlocks(doc).blocks);
     const kp = out[0]?.spans.filter((s) => s.role === "kp") ?? [];
     expect(kp.length).toBe(2);
+  });
+
+  test("quoted phrases become terms", () => {
+    const doc = "常见“8 种 loop pattern”不在同一维度。\n";
+    const out = heuristicSpans(splitBlocks(doc).blocks);
+    expect(out[0]?.spans).toContainEqual({ quote: "8 种 loop pattern", role: "term" });
   });
 
   test("plain text yields nothing", () => {
