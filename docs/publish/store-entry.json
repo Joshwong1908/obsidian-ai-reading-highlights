@@ -1,7 +1,0 @@
-{
-  "id": "semantic-reading",
-  "name": "Semantic Reading",
-  "author": "Joshwong1908",
-  "description": "Highlights key sentences, terms, and concepts inside your notes using an LLM you configure. Reading view and live preview, never modifies note files.",
-  "repo": "Joshwong1908/obsidian-semantic-reading"
-}

@@ -86,7 +86,7 @@ export class SemanticReadingSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }),
     );
-    containerEl.createEl("h3", { text: "Highlights" });
+    new Setting(containerEl).setName("Highlights").setHeading();
     for (const role of SPAN_ROLES) {
       new Setting(containerEl).setName(SPAN_LABEL[role]).addToggle((t) =>
         t.setValue(s.highlights.has(role)).onChange(async (on) => {
@@ -99,7 +99,7 @@ export class SemanticReadingSettingTab extends PluginSettingTab {
       );
     }
 
-    containerEl.createEl("h3", { text: "Classification API (OpenAI-compatible)" });
+    new Setting(containerEl).setName("Classification API (OpenAI-compatible)").setHeading().setDesc("Optional. Highlights work out of the box with the offline heuristic; fill these in to let a model annotate your notes.");
     new Setting(containerEl).setName("Base URL").addText((t) =>
       t.setPlaceholder("https://open.bigmodel.cn/api/coding/paas/v4").setValue(s.baseUrl).onChange(async (v) => {
         s.baseUrl = v.trim();
@@ -120,7 +120,7 @@ export class SemanticReadingSettingTab extends PluginSettingTab {
     );
     new Setting(containerEl)
       .setName("Disable model thinking")
-      .setDesc("Sends thinking: disabled. Keeps GLM labeling fast; turn off if your provider rejects the field.")
+      .setDesc("Sends a \"thinking: disabled\" field with each request so GLM models answer in seconds instead of minutes. Turn this off if your provider rejects the field.")
       .addToggle((t) =>
         t.setValue(s.disableThinking).onChange(async (v) => {
           s.disableThinking = v;
@@ -131,19 +131,19 @@ export class SemanticReadingSettingTab extends PluginSettingTab {
       b.setButtonText("Test").onClick(async () => {
         const api = apiConfigOf(s);
         if (api === null) {
-          this.setStatus("Fill base URL, key, and model first.");
+          this.setStatus("Fill in the base URL, API key, and model first.");
           return;
         }
         const res = await probeApi(api, this.plugin.transport);
-        this.setStatus(res.ok ? `Reachable. Highlights will use ${api.model}.` : `Failed: ${res.failure.detail ?? res.failure.reason}`);
+        this.setStatus(res.ok ? `Connection OK. Highlights will use ${api.model}.` : `Connection failed: ${res.failure.detail ?? res.failure.reason}`);
       }),
     );
     this.statusEl = containerEl.createEl("p", { cls: "sr-status" });
 
-    containerEl.createEl("h3", { text: "Cache" });
+    new Setting(containerEl).setName("Cache").setHeading();
     new Setting(containerEl)
       .setName("Clear cached highlights")
-      .setDesc("Removes all stored span annotations. They are re-created on next open.")
+      .setDesc("Deletes all stored highlights. They are rebuilt the next time you open a note.")
       .addButton((b) =>
         b.setButtonText("Clear").onClick(async () => {
           this.plugin.store.clear();

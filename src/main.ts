@@ -1,4 +1,4 @@
-import { MarkdownView, Notice, Plugin, TFile } from "obsidian";
+import { MarkdownView, Notice, normalizePath, Plugin, TFile } from "obsidian";
 
 import { createAnnotationStore, AnnotationStore, parseStoreFile } from "./store";
 import { createPipeline, Pipeline, PipelineSettings } from "./pipeline";
@@ -53,7 +53,11 @@ export default class SemanticReadingPlugin extends Plugin {
         store: this.store,
         enabledSpans,
         spansFor: (path) => this.noteSpans.get(path) ?? [],
-        onStoreChange: (listener) => this.store.onUpdate(() => listener()),
+        onStoreChange: (listener) => {
+          const off = this.store.onUpdate(() => listener());
+          this.register(() => off());
+          return off;
+        },
       }),
     );
     this.registerEditorExtension(
@@ -82,20 +86,24 @@ export default class SemanticReadingPlugin extends Plugin {
     });
     this.addCommand({
       id: "reclassify-note",
-      name: "Reclassify current note now",
-      callback: () => {
+      name: "Reclassify current note",
+      checkCallback: (checking) => {
         const file = this.activeNoteFile();
-        if (file !== null) this.pipeline.reclassifyNow(file.path);
+        if (file === null) return false;
+        if (!checking) this.pipeline.reclassifyNow(file.path);
+        return true;
       },
     });
 
     this.addCommand({
       id: "diagnose",
-      name: "Diagnose rendering (writes diagnosis.txt)",
+      name: "Diagnose rendering",
       callback: () => {
         void this.diagnose();
       },
     });
+
+
 
     this.addSettingTab(new SemanticReadingSettingTab(this.app, this));
     applyHighlightStyle(this.cfg);
@@ -148,17 +156,17 @@ export default class SemanticReadingPlugin extends Plugin {
       `version: ${this.manifest.version}`,
     ];
     const report = lines.join("\n");
-    console.info("[Semantic Reading] diagnosis\n" + report);
+    console.debug("[Semantic Reading] diagnosis\n" + report);
     try {
       const dir = this.manifest.dir ?? "";
-      const path = dir === "" ? "diagnosis.txt" : `${dir.replace(/\/+$/, "")}/diagnosis.txt`;
+      const path = normalizePath(`${dir}/diagnosis.txt`);
       await this.app.vault.adapter.write(path, report + "\n");
       if (!auto) {
-        new Notice(`SR diagnosis: liveBuilt=${s.liveMarksBuilt} liveHits=${s.liveStoreHits} cmMarks=${document.querySelectorAll(".cm-content .sr-kp, .cm-content .sr-term, .cm-content .sr-concept").length} readingMarks=${s.marksApplied} store=${this.store.size()}. Full: ${path}`, 12000);
+        new Notice(`Semantic Reading diagnosis: liveBuilt=${s.liveMarksBuilt} liveHits=${s.liveStoreHits} cmMarks=${document.querySelectorAll(".cm-content .sr-kp, .cm-content .sr-term, .cm-content .sr-concept").length} readingMarks=${s.marksApplied} store=${this.store.size()}. Full: ${path}`, 12000);
       }
     } catch (e) {
       if (!auto) {
-        new Notice(`SR diagnosis (write failed): liveBuilt=${s.liveMarksBuilt} liveHits=${s.liveStoreHits} readingMarks=${s.marksApplied} store=${this.store.size()}.`, 12000);
+        new Notice(`Semantic Reading diagnosis (write failed): liveBuilt=${s.liveMarksBuilt} liveHits=${s.liveStoreHits} readingMarks=${s.marksApplied} store=${this.store.size()}.`, 12000);
       }
     }
   }
@@ -166,7 +174,7 @@ export default class SemanticReadingPlugin extends Plugin {
   private async loadPluginState(): Promise<void> {
     this.cfg = parseSettings(await this.loadData());
     const dir = this.manifest.dir ?? "";
-    const cachePath = dir === "" ? CACHE_FILE : `${dir.replace(/\/+$/, "")}/${CACHE_FILE}`;
+    const cachePath = normalizePath(`${this.manifest.dir ?? ""}/${CACHE_FILE}`);
     let cacheJson: unknown = null;
     try {
       cacheJson = JSON.parse(await this.app.vault.adapter.read(cachePath));

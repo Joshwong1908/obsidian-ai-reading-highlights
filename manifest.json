@@ -3,7 +3,7 @@
   "name": "Semantic Reading",
   "version": "1.0.0",
   "minAppVersion": "1.5.0",
-  "description": "Highlights key sentences, terms, and concepts inside your notes using an LLM you configure. Reading view and live preview, never modifies note files.",
+  "description": "Highlights key sentences, terms, and concepts in your notes using an LLM you configure. Works in reading view and live preview, and never modifies note files.",
   "author": "Joshwong1908",
   "authorUrl": "https://github.com/Joshwong1908",
   "isDesktopOnly": false
