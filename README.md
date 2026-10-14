@@ -32,7 +32,6 @@ Classification sends the text blocks of the note you open to the OpenAI-compatib
 2. Settings → Semantic Reading → Classification API. Fill in the base URL, API key, and model, then click **Test connection**.
 3. Open a note. Heuristic highlights appear immediately, and API highlights follow within seconds.
 
-![Settings](docs/probe-shots/settings.png)
 
 
 
